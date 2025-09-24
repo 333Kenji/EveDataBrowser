@@ -67,8 +67,8 @@
 - [ ] T016 Implement ingestion downloader with httpx + tenacity, including resume support and timeout strategy (`ingestion/src/fetch_and_load.py`).
 - [ ] T017 Implement decompressor + manifest writer ensuring types → blueprints order, SHA-256 manifest, checksum validation, and JSON derivatives persisted (`ingestion/src/pipeline.py`).
 - [ ] T018 Implement ingestion run metadata logging, failure abort logic (missing assets / checksum mismatch), and idempotency check (`ingestion/src/runner.py`).
-- [ ] T019 Author Alembic migration creating `sde_manifests`, `sde_types`, `sde_blueprints`, `sde_structures`, `sde_rigs`, `sde_industry_materials` tables with indexes aligned to data model (`backend/src/db/migrations/V001__sde_tables.py`).
-- [ ] T020 Build typed data access layer for SDE tables (including rig bonuses) with pagination/filter helpers (`backend/src/db/sde_repository.ts`).
+- [ ] T019 Author Alembic migration creating `sde_versions`, `invCategories`, `invGroups`, `invTypes` (ships only), `invBlueprintTypes`, `industryActivity`, `industryActivityMaterials`, `industryActivityProducts`, and attribute views with indexes aligned to data model (`backend/src/db/migrations/V001__sde_tables.py`).
+- [ ] T020 Build typed data access layer for ship/blueprint tables with pagination/filter helpers (`backend/src/db/sde_repository.ts`).
 - [ ] T021 [P] Implement manifest health endpoint returning latest manifest + ingestion status (`backend/src/api/manifest.ts`).
 - [ ] T022 [P] Implement `GET /api/items` endpoint with manifest headers, filter/pagination, and Postgres-backed queries (`backend/src/api/items.ts`).
 - [ ] T023 [P] Implement ingestion status broadcaster (e.g., message bus/log integration) so UI can display current state (`backend/src/services/ingestionStatus.ts`).

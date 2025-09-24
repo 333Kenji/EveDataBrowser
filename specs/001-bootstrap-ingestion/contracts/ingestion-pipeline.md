@@ -28,9 +28,9 @@ Describe the expected behaviour of the end-to-end ingestion job that downloads, 
    - Manifest record created/updated with version label (derived from page or `--version` override), SHA-256 values, timestamps, importer version.
    - If the computed SHA-256 values match the latest successful manifest, pipeline short-circuits with status `succeeded` and note “no changes”.
 5. **JSON derivatives**
-   - Worker parses YAML to generate JSON artifacts: `type_ids.json`, `blueprints.json`, `structures.json`, `rigs.json` saved in `data/sde/` root.
+   - Worker parses YAML to generate JSON artifacts: `type_ids.json`, `blueprints.json`, `attributes.json` saved in `data/sde/` root.
 6. **Database upsert**
-   - Parsed entities inserted/updated in Postgres tables `sde_types`, `sde_blueprints`, `sde_structures`, `sde_industry_materials` scoped by manifest id.
+   - Parsed entities inserted/updated in Postgres tables `invTypes` (ships only), `invBlueprintTypes`, `industryActivity`, `industryActivityMaterials`, `industryActivityProducts`, and `sde_versions` scoped by manifest id.
    - Upserts are transactional per entity type; failure rolls back and sets run status `failed`.
 7. **Completion**
    - Run status becomes `succeeded`; manifest `completed_at` set; log entry emitted with summary stats (durations, new records).

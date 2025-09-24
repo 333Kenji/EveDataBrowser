@@ -10,8 +10,7 @@ Establish authoritative references and design constraints for downloading, valid
 - **Rationale**: CCP’s static data index consistently exposes `typeIDs.yaml.bz2` and `industryBlueprints.yaml.bz2` links and version labels (e.g., `v2024.05.14`). Mirrors occasionally receive updates later, so expose fallback while defaulting to first-party.
 - **Alternatives considered**: Direct GitHub mirrors (Fuzzwork) – rejected for production ingest due to unofficial provenance.
 
-### 2. File set, size, and storage footprint
-- **Decision**: Persist the following assets per run: raw downloads (`_downloads/`), decompressed YAML, JSON derivatives (`type_ids.json`, `blueprints.json`, `structures.json`, `rigs.json`), and manifest metadata.
+- **Decision**: Persist the following assets per run: raw downloads (`_downloads/`), decompressed YAML, JSON derivatives (`type_ids.json`, `blueprints.json`, `attributes.json`), and manifest metadata.
 - **Rationale**: Mirrors EVEIndy practice; JSON derivatives accelerate API queries while raw files aid diffing. Expected decompressed size: ~1.6 GB for `typeIDs.yaml`, ~150 MB for blueprints.
 - **Alternatives considered**: Dropping raw YAML post-processing – rejected because replays/diffs become impossible without re-downloading.
 

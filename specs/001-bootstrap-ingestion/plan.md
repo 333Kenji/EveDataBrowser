@@ -98,7 +98,7 @@ data/
     ├── manifest.json
     ├── type_ids.json
     ├── blueprints.json
-    └── structures.json
+    └── attributes.json
 
 docker/
 ├── Dockerfile.*
@@ -110,7 +110,7 @@ docker/
 ## Phase 0: Outline & Research
 1. **Extract unknowns from Technical Context**:
    - Confirm authoritative CCP static data endpoints, mirror options, and versioning cadence.
-   - Determine required subset of SDE YAML (types, blueprints, structures) and projected storage footprint after JSON conversion.
+   - Determine required subset of SDE YAML (types, blueprints, supporting lookup tables) and projected storage footprint after JSON conversion.
    - Validate checksum algorithm expectations and manifest schema used in prior EVEIndy project.
    - Assess Docker volume strategies for persisting `data/sde/` across services and environments.
    - Identify accessibility requirements for Background Web animations (reduced-motion toggles, performance budgets).
@@ -137,7 +137,7 @@ For ingestion cadence/manifest:
 
 1. **Model data & ingestion artifacts** in `data-model.md`:
   - SDE manifest entity (version, checksum, status, source URL, timestamps).
-  - Type, blueprint, structure, and rig models with provenance fields, Postgres indexing guidance, and retention expectations.
+  - Ship and blueprint models with provenance fields, Postgres indexing guidance, and retention expectations.
    - Ingestion run state machine (queued → running → succeeded/failed) with failure metadata.
 
 2. **Generate API & UI contracts** for browsing features:
