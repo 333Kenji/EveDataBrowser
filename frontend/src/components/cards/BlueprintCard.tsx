@@ -1,99 +1,164 @@
-/**
- * BlueprintCard.tsx
- * Minimal blueprint detail skeleton. Future work will wire live calculator,
- * market chart visuals, and activity-specific interactions.
- */
+import { useMemo, useState } from "react";
 
-import React from 'react';
+import { tokens } from "../../styles/tokens";
 
-export interface BlueprintMaterial {
-  type_id: number;
-  name: string;
-  qty: number;
-}
+const activityTabs = ["Manufacturing", "Invention"] as const;
 
-export interface BlueprintActivitiesPresent {
-  manufacturing: boolean;
-  research_me: boolean;
-  research_te: boolean;
-  invention: boolean;
-}
+export function BlueprintCard(): JSX.Element {
+  const [activeTab, setActiveTab] = useState<(typeof activityTabs)[number]>("Manufacturing");
 
-export interface BlueprintManufacturingInfo {
-  time: number;
-  runs: number;
-  materials: BlueprintMaterial[];
-}
+  const activity = useMemo(() => {
+    if (activeTab === "Manufacturing") {
+      return {
+        materials: [
+          { name: "Tritanium", quantity: "100" },
+          { name: "Pyerite", quantity: "20" },
+        ],
+        products: [{ name: "Merlin", quantity: "1" }],
+        time: "20 minutes",
+        skills: [{ name: "Industry", level: 3 }],
+      };
+    }
+    return {
+      materials: [{ name: "Datacore - Rocket Science", quantity: "2" }],
+      products: [{ name: "Merlin Blueprint Copy", quantity: "1" }],
+      time: "12 hours",
+      skills: [{ name: "Invention", level: 4 }],
+    };
+  }, [activeTab]);
 
-export interface BlueprintCardData {
-  blueprint_type_id: number;
-  name: string;
-  product: { type_id: number; name: string };
-  activities_present: BlueprintActivitiesPresent;
-  manufacturing: BlueprintManufacturingInfo;
-  invention?: {
-    datacores: BlueprintMaterial[];
-    base_chance: number;
-  } | null;
-  manifest: { version: string; imported_at: string };
-}
-
-export interface BlueprintCardProps {
-  blueprint: BlueprintCardData;
-}
-
-const activityOrder: { key: keyof BlueprintActivitiesPresent; label: string }[] = [
-  { key: 'manufacturing', label: 'Manufacturing' },
-  { key: 'research_me', label: 'Research ME' },
-  { key: 'research_te', label: 'Research TE' },
-  { key: 'invention', label: 'Invention' }
-];
-
-export const BlueprintCard: React.FC<BlueprintCardProps> = ({ blueprint }) => {
   return (
-    <section aria-labelledby="blueprint-card-heading" style={{ padding: 24 }}>
-      <header style={{ marginBottom: 16 }}>
-        <h2 id="blueprint-card-heading">{blueprint.name}</h2>
-        <p style={{ opacity: 0.7 }}>Produces: {blueprint.product.name}</p>
+    <article style={styles.card}>
+      <header style={styles.header}>
+        <div>
+          <h2 style={styles.title}>Merlin Blueprint</h2>
+          <p style={styles.subtitle}>Product: Merlin • Manifest sde-test-blueprint</p>
+        </div>
+      <span style={styles.badge}>Manifest sde-test-blueprint</span>
       </header>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 24 }}>
-        <div style={{ borderRadius: 24, background: 'rgba(255,255,255,0.04)', padding: 16 }}>
-          <h3 style={{ marginBottom: 12 }}>Calculator</h3>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-            {activityOrder.map(({ key, label }) => (
-              <button
-                key={key}
-                disabled={!blueprint.activities_present[key]}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: 20,
-                  border: 'none',
-                  opacity: blueprint.activities_present[key] ? 1 : 0.3
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <ul>
-            {blueprint.manufacturing.materials.map((material) => (
-              <li key={material.type_id}>{material.name} × {material.qty}</li>
+      <nav aria-label="Blueprint activities" style={styles.tabList}>
+        {activityTabs.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            style={{
+              ...styles.tab,
+              backgroundColor:
+                tab === activeTab ? tokens.colors.accentGreen : "rgba(255,255,255,0.05)",
+              color: tab === activeTab ? tokens.colors.base : tokens.colors.textPrimary,
+            }}
+          >
+            {tab}
+          </button>
+        ))}
+      </nav>
+      <section style={styles.grid}>
+        <div>
+          <h3 style={styles.sectionTitle}>Materials</h3>
+          <ul style={styles.list}>
+            {activity.materials.map((item) => (
+              <li key={item.name} style={styles.listItem}>
+                <span>{item.name}</span>
+                <span>{item.quantity}</span>
+              </li>
             ))}
           </ul>
-          <p style={{ marginTop: 8 }}>Runs: {blueprint.manufacturing.runs} · Time: {blueprint.manufacturing.time}s</p>
         </div>
-        <div style={{ borderRadius: 24, background: 'rgba(255,255,255,0.04)', padding: 16 }}>
-          <h3 style={{ marginBottom: 12 }}>Market Stats</h3>
-          <div style={{ height: 220, borderRadius: 16, background: 'rgba(34,211,238,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            Blueprint market chart placeholder
-          </div>
+        <div>
+          <h3 style={styles.sectionTitle}>Products</h3>
+          <ul style={styles.list}>
+            {activity.products.map((item) => (
+              <li key={item.name} style={styles.listItem}>
+                <span>{item.name}</span>
+                <span>{item.quantity}</span>
+              </li>
+            ))}
+          </ul>
         </div>
-      </div>
-      <footer style={{ marginTop: 24, opacity: 0.6 }}>
-        Manifest v{blueprint.manifest.version} · Imported {blueprint.manifest.imported_at}
-      </footer>
-    </section>
+        <div>
+          <h3 style={styles.sectionTitle}>Skills</h3>
+          <ul style={styles.list}>
+            {activity.skills.map((item) => (
+              <li key={item.name} style={styles.listItem}>
+                <span>{item.name}</span>
+                <span>Level {item.level}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+      <footer style={styles.footer}>Estimated Time: {activity.time}</footer>
+    </article>
   );
+}
+
+const styles = {
+  card: {
+    backgroundColor: tokens.colors.surface,
+    borderRadius: tokens.radii.lg,
+    padding: tokens.spacing.lg,
+    display: "flex",
+    flexDirection: "column" as const,
+    gap: tokens.spacing.md,
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: tokens.spacing.md,
+  },
+  title: {
+    margin: 0,
+    fontSize: "1.75rem",
+  },
+  subtitle: {
+    margin: 0,
+    color: "rgba(255,255,255,0.7)",
+  },
+  badge: {
+    padding: `${tokens.spacing.xs} ${tokens.spacing.sm}`,
+    borderRadius: tokens.radii.sm,
+    backgroundColor: tokens.colors.accentGreen,
+    color: tokens.colors.base,
+    fontWeight: 600,
+  },
+  tabList: {
+    display: "flex",
+    gap: tokens.spacing.sm,
+  },
+  tab: {
+    border: "none",
+    borderRadius: tokens.radii.sm,
+    padding: `${tokens.spacing.xs} ${tokens.spacing.md}`,
+    cursor: "pointer",
+  },
+  grid: {
+    display: "grid",
+    gap: tokens.spacing.md,
+    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+  },
+  sectionTitle: {
+    margin: 0,
+  },
+  list: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+    display: "grid",
+    gap: tokens.spacing.xs,
+  },
+  listItem: {
+    display: "flex",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: tokens.radii.sm,
+    padding: tokens.spacing.xs,
+  },
+  footer: {
+    marginTop: tokens.spacing.sm,
+    color: "rgba(255,255,255,0.7)",
+  },
 };
 
 export default BlueprintCard;
