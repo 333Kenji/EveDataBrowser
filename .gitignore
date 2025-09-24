@@ -8,6 +8,10 @@ __pycache__/
 node_modules/
 # Docker
 .env
+
+# Data archives
+docs/data/*.zip
+data/*.zip
 # OS/Editor
 .DS_Store
 .vscode/
