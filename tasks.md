@@ -123,11 +123,11 @@ All tasks map to milestones M0–M7 from `plan.md`. Each task lists actionable s
   - **Depends on**: M5-T03, M4-T03.
 
 ## Milestone M6 — Market Data (Live)
-- [ ] **M6-T01 Adam4EVE live adapter** (`ingestion/src/market/adam4eve.py`, `ingestion/tests/test_market_live.py`)
+- [X] **M6-T01 Adam4EVE live adapter** (`ingestion/src/market/adam4eve.py`, `ingestion/tests/test_market_live.py`)
   - **Sub-steps**: (a) Call live API; (b) Handle pagination/backoff; (c) Persist new snapshots only; (d) Log rate usage.
   - **Notes**: Reuse limiter config; store raw payload in JSON column as per data model.
   - **Depends on**: M5-T02, M1-T03.
-- [ ] **M6-T02 Scheduler + retention** (`ingestion/src/scheduler.py`, `docker/entrypoints/cron.sh`, `ingestion/tests/test_scheduler.py`)
+- [X] **M6-T02 Scheduler + retention** (`ingestion/src/scheduler.py`, `docker/entrypoints/cron.sh`, `ingestion/tests/test_scheduler.py`)
   - **Sub-steps**: (a) Implement cadence (default 30 min with jitter); (b) Add pruning job for >90 day data; (c) Ensure manual trigger supported.
   - **Notes**: Document schedule in `docs/data/market.md`.
   - **Depends on**: M6-T01.
