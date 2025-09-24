@@ -16,7 +16,6 @@ Provide clients with the latest successful SDE manifest metadata for display and
   "status": "succeeded",
   "types_sha256": "<sha256>",
   "blueprints_sha256": "<sha256>",
-  "structures_sha256": "<sha256 or null>",
   "source_url": "https://developers.eveonline.com/static-data",
   "importer_version": "1.0.0",
   "started_at": "2025-09-21T18:04:05Z",

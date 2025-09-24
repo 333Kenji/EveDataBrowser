@@ -68,29 +68,30 @@ Fleet logisticians need to load the latest CCP SDE snapshot so they can explore 
 2. **Given** a previously ingested SDE version exists, **When** the same archive is ingested again, **Then** the system detects the unchanged checksum, skips redundant database updates, and reports that no rotation was required.
 3. **Given** a logistics analyst opens the Eve Data Browser UI, **When** they filter by ship category or enter a search term, **Then** the React interface displays matching SDE records with manifest metadata badges.
 4. **Given** the ingestion worker cannot find a required SDE asset or detects a checksum mismatch, **When** the run executes, **Then** it aborts safely, preserves the prior manifest, and surfaces a clear failure status for operators.
+5. **Given** the CCP static data page layout changes and assets are not discovered, **When** the watcher runs, **Then** it logs a warning, attempts configured fallback mirrors, and pauses ingestion until an operator supplies a valid archive.
 
 ### Edge Cases
-- What happens when the CCP static data page layout changes or required files are unavailable?
-- How does system handle a manifest checksum mismatch between download and stored expectations?
+- CCP static data page layout changes or required files are unavailable ⇒ ingestion must surface a warning, fall back to configured mirror/manual override, and block the run until an operator supplies a valid archive.
+- Manifest checksum mismatch between download and stored expectations ⇒ run aborts, prior manifest remains active, and error details are logged.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 - **FR-001**: System MUST allow maintainers to initiate Eve SDE ingestion runs using official CCP download locations.
 - **FR-002**: System MUST capture manifest metadata (version label, download timestamp, SHA-256) for each ingestion attempt.
-- **FR-003**: System MUST persist parsed SDE entities (types, blueprints, structures, rig hints) into the authoritative Postgres datastore so the browser can query them.
+- **FR-003**: System MUST persist parsed SDE ship and blueprint entities into the authoritative Postgres datastore so the browser can query them.
 - **FR-004**: System MUST expose ingestion status and manifest metadata to the data browser API consumers.
 - **FR-005**: System MUST provide a containerized runtime where ingestion, API, and frontend services share access to the `data/sde/` artifacts.
 - **FR-006**: System MUST ensure re-ingesting an identical archive is idempotent and does not duplicate data or manifests.
 - **FR-007**: System MUST flag and halt ingestion when required files or checksum validations fail, leaving prior manifest data intact.
 - **FR-008**: System MUST allow frontend users to see that SDE-backed datasets reflect the latest manifest version and ingestion timestamp.
-- **FR-009**: System MUST provide a React-based filament UI that supports search, filtering, and manifest badge display for SDE records.
+- **FR-009**: System MUST provide a React-based filament UI that supports search, filtering, and manifest badge display for ship and blueprint records.
 
 ### Key Entities *(include if feature involves data)*
 - **SDE Manifest**: Label combining version string, checksum, source URL, ingestion timestamp, and status; drives manifest rotation decisions.
-- **SDE Type Record**: Metadata drawn from typeIDs: type identifier, name, group/category references, supplemental attributes for filtering.
-- **SDE Blueprint Record**: Manufacturing/reaction blueprint definition, including product identifiers, material lists, and output quantities.
-- **Filament UI View**: React component library that surfaces searchable tables, manifests badges, and reduced-motion controls backed by SDE datasets.
+- **SDE Ship Record**: Metadata drawn from `invTypes` + attributes: type identifier, name, group/category references, race/faction, slot counts, attributes.
+- **SDE Blueprint Record**: Manufacturing/reaction blueprint definition, including product identifiers, activities, materials, and times.
+- **Filament UI View**: React component library that surfaces searchable tables, manifest badges, and reduced-motion controls backed by ship and blueprint datasets.
 
 ---
 

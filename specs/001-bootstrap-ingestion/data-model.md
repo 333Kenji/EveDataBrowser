@@ -14,7 +14,6 @@ The feature introduces durable entities for SDE manifests and parsed records tha
 | `mirror_url` | text? | Optional fallback mirror recorded when used. |
 | `types_sha256` | text | SHA-256 of decompressed `typeIDs.yaml`. |
 | `blueprints_sha256` | text | SHA-256 of decompressed `industryBlueprints.yaml`. |
-| `structures_sha256` | text? | Optional if additional files ingested. |
 | `importer_version` | text | Semantic version of ingestion tool. |
 | `status` | enum(`queued`,`running`,`succeeded`,`failed`) | Run lifecycle state. |
 | `started_at` | timestamptz | UTC start timestamp. |
@@ -24,9 +23,9 @@ The feature introduces durable entities for SDE manifests and parsed records tha
 | `created_at` | timestamptz | Record creation timestamp. |
 | `updated_at` | timestamptz | Record update timestamp. |
 
-**Relationships**: One manifest version corresponds to many `SDEType`, `SDEBlueprint`, and `SDEStructure` records (via `manifest_id`). Only the latest `status='succeeded'` manifest is exposed to clients by default.
+**Relationships**: One manifest version corresponds to many `SDEShip` and `SDEBlueprint` records (via `manifest_id`). Only the latest `status='succeeded'` manifest is exposed to clients by default.
 
-### SDEType
+### SDEShip
 | Field | Type | Notes |
 | --- | --- | --- |
 | `type_id` | bigint | Primary key (from CCP). |
@@ -34,53 +33,32 @@ The feature introduces durable entities for SDE manifests and parsed records tha
 | `name` | text | Localised or fallback English name. |
 | `group_id` | bigint | CCP group reference. |
 | `category_id` | bigint | CCP category reference. |
-| `meta` | jsonb | Raw supplemental attributes (mass, volume, flags). |
-| `created_at` | timestamptz | Insertion timestamp. |
-| `updated_at` | timestamptz | Last update timestamp. |
+| `race_id` | bigint | Race/faction reference. |
+| `description` | text | Ship description. |
+| `attributes` | jsonb | Aggregated slots, hardpoints, mass, volume, CPU, powergrid, align time. |
+| `created_at` | timestamptz | Timestamp. |
+| `updated_at` | timestamptz | Timestamp. |
 
 ### SDEBlueprint
 | Field | Type | Notes |
 | --- | --- | --- |
-| `type_id` | bigint | Blueprint type. |
+| `blueprint_type_id` | bigint | Primary key. |
 | `manifest_id` | UUID (FK) | Links to `SDEManifest`. |
-| `product_id` | bigint | Output item type. |
-| `activity` | enum(`manufacturing`,`reaction`) | Activity scope. |
-| `materials` | jsonb | Array of `{ type_id, quantity }`. |
-| `output_qty` | integer | Produced quantity for activity. |
-| `created_at` | timestamptz | Timestamp. |
-| `updated_at` | timestamptz | Timestamp. |
-
-Composite primary key: `(type_id, product_id, activity, manifest_id)`.
-
-### SDEStructure
-| Field | Type | Notes |
-| --- | --- | --- |
-| `structure_id` | bigint | Unique identifier. |
-| `manifest_id` | UUID (FK) | Links to `SDEManifest`. |
-| `type` | text | Structure classification. |
-| `rig_slots` | integer | Slot count. |
-| `bonuses` | jsonb | Activity bonuses. |
+| `product_type_id` | bigint | Output item type. |
+| `name` | text | Blueprint name. |
+| `max_production_limit` | integer | Runs per job. |
+| `meta` | jsonb | Additional blueprint metadata (tech level, published). |
 | `created_at` | timestamptz | Timestamp. |
 | `updated_at` | timestamptz | Timestamp. |
 
 ### SDEIndustryMaterial
 | Field | Type | Notes |
 | --- | --- | --- |
-| `type_id` | bigint | Material type reference. |
+| `blueprint_type_id` | bigint | Blueprint reference. |
 | `manifest_id` | UUID (FK) | Links to `SDEManifest`. |
-| `source` | text | e.g., `bp_material`. |
-| `created_at` | timestamptz | Timestamp. |
-| `updated_at` | timestamptz | Timestamp. |
-
-### SDERig
-| Field | Type | Notes |
-| --- | --- | --- |
-| `rig_id` | bigint | Primary key derived from CCP rig type. |
-| `manifest_id` | UUID (FK) | Links to `SDEManifest`. |
-| `name` | text | Localised or fallback English rig name. |
-| `activity` | text | Activity classification (Manufacturing, Reactions, Refining, etc.). |
-| `me_bonus` | numeric | Material efficiency bonus expressed as decimal. |
-| `te_bonus` | numeric | Time efficiency bonus expressed as decimal. |
+| `activity_id` | smallint | Manufacturing/research/invention. |
+| `material_type_id` | bigint | Material type reference. |
+| `quantity` | bigint | Required quantity. |
 | `created_at` | timestamptz | Timestamp. |
 | `updated_at` | timestamptz | Timestamp. |
 
@@ -98,11 +76,9 @@ Used for observability/logging.
 
 ## Relationships Overview
 ```
-SDEManifest (1) ──< SDEType
+SDEManifest (1) ──< SDEShip
           └──< SDEBlueprint
-          └──< SDEStructure
           └──< SDEIndustryMaterial
-          └──< SDERig
           └──< IngestionRunEvent
 ```
 
@@ -116,15 +92,14 @@ queued → running → { succeeded | failed }
 - Transition `succeeded` updates corresponding manifest FKs; idempotent re-run with identical checksums short-circuits to `succeeded` without modifying dependent tables.
 
 ## Indexing & Performance Notes
-- Primary indexes on `SDEType.type_id`, `SDEBlueprint (product_id, activity)`, `SDEManifest.status`.
+- Primary indexes on `SDEShip.type_id`, `SDEBlueprint.blueprint_type_id`, `SDEManifest.status`.
 - Partial index on `SDEManifest` where `status='succeeded'` for fast lookup of latest record.
-- Gin indexes on JSONB columns (`meta`, `materials`) for advanced filtering once requirements surface.
+- Btree indexes on lower-cased ship and blueprint names for search; optional GIN index on `attributes` for future filtering.
 
 ## Access Patterns
-- Backend API queries join `SDEType` and `SDEBlueprint` filtered by `manifest_id = latest_successful_manifest_id()`.
+- Backend API queries join `SDEShip` and `SDEBlueprint` filtered by `manifest_id = latest_successful_manifest_id()`.
 - Health endpoint queries `SDEManifest` for freshness and status.
 - Frontend displays manifest metadata from API response headers/payload.
-- Rig-focused UI/API surfaces query `SDERig` for activity bonuses associated with the active manifest.
 
 ## Data Lifecycle
 - New manifest inserted with `status=queued`, transitions as pipeline progresses.
