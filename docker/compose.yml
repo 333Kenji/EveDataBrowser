@@ -1,0 +1,83 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: eve-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-evedb}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ingestion:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.ingestion
+    container_name: eve-ingestion
+    command: ["bash", "-lc", "tail -f /dev/null"]
+    env_file:
+      - ../.env.example
+    volumes:
+      - ..:/workspace:cached
+      - sde-data:/workspace/data/SDE
+    working_dir: /workspace
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: eve-backend
+    command:
+      - bash
+      - -lc
+      - python -m uvicorn backend.src.main:create_app --host 0.0.0.0 --port 8000 --reload
+    env_file:
+      - ../.env.example
+    environment:
+      UVICORN_RELOAD: "1"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ..:/workspace:cached
+      - sde-data:/workspace/data/SDE
+    working_dir: /workspace
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: eve-frontend
+    command: ["bash", "-lc", "npm run dev -- --host 0.0.0.0 --port 5173"]
+    env_file:
+      - ../.env.example
+    volumes:
+      - ..:/workspace:cached
+      - node-modules-cache:/workspace/frontend/node_modules
+    working_dir: /workspace/frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  sde-data:
+  node-modules-cache:
