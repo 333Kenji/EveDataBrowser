@@ -36,8 +36,8 @@
 Bootstrap the Eve Data Browser ingest-and-browse workflow by establishing the shared Docker compose stack, implementing the authoritative SDE ingestion run (download → decompress → manifest → Postgres), wiring the Postgres schema, and delivering a React filament UI that surfaces manifest-aware dataset browsing.
 
 ## Technical Context
-**Language/Version**: Python 3.12 for ingestion worker; Node.js 20 / TypeScript 5 for backend + frontend; React 18  
-**Primary Dependencies**: httpx, tenacity, SQLAlchemy migrations, Express 5, Postgres 15 client libs, Vite 5, React 18, TanStack Query 5  
+**Language/Version**: Python 3.12 for ingestion worker and FastAPI backend; Node.js 20 / TypeScript 5 for frontend; React 18  
+**Primary Dependencies**: httpx, tenacity, FastAPI 0.111, Pydantic, SQLAlchemy + Alembic migrations, Postgres 15 client libs, Vite 5, React 18, TanStack Query 5  
 **Storage**: PostgreSQL 15 (managed via versioned migrations)  
 **Testing**: pytest, Vitest, Jest + Supertest  
 **Target Platform**: Dockerized multi-service stack (ingestion worker, backend API, frontend SPA, Postgres)  
@@ -110,7 +110,7 @@ docker/
 ## Phase 0: Outline & Research
 1. **Extract unknowns from Technical Context**:
    - Confirm authoritative CCP static data endpoints, mirror options, and versioning cadence.
-   - Determine required subset of SDE YAML (types, blueprints, supporting lookup tables) and projected storage footprint after JSON conversion.
+   - Determine required subset of SDE YAML (`types.yaml`, `typeDogma.yaml`, `dogmaAttributes.yaml`, `typeMaterials.yaml`, `blueprints.yaml`, `marketGroups.yaml`, `categories.yaml`, `groups.yaml`) and projected storage footprint after JSON conversion while documenting megafiles intentionally deferred (e.g., `mapMoons.yaml`).
    - Validate checksum algorithm expectations and manifest schema used in prior EVEIndy project.
    - Assess Docker volume strategies for persisting `data/sde/` across services and environments.
    - Identify accessibility requirements for Background Web animations (reduced-motion toggles, performance budgets).
@@ -136,14 +136,18 @@ For ingestion cadence/manifest:
 *Prerequisites: research.md complete*
 
 1. **Model data & ingestion artifacts** in `data-model.md`:
-  - SDE manifest entity (version, checksum, status, source URL, timestamps).
-  - Ship and blueprint models with provenance fields, Postgres indexing guidance, and retention expectations.
+   - SDE manifest entity (version, checksum, status, source URL, timestamps).
+   - Ship and blueprint models with provenance fields, presets (faction/race/group/category), Postgres indexing guidance, retention expectations, plus presentation metadata (3D asset descriptors, dummy chart data sources).
+   - Attribute join surfaces: map `typeDogma.yaml` → `dogmaAttributes.yaml` with units/highIsGood metadata for ship stats surfaced in UI.
+   - Blueprint activity tables covering manufacturing + invention (materials, skills, probability, time) aligned with `blueprints.yaml` schema.
    - Ingestion run state machine (queued → running → succeeded/failed) with failure metadata.
 
 2. **Generate API & UI contracts** for browsing features:
    - Read-only endpoints supplying filtered type/blueprint data with manifest metadata headers/payload fields.
    - Health/manifest endpoint exposing current version, timestamps, and last successful ingestion status.
-   - React view definitions covering filament grid layout, search/filter controls, manifest badge placement, and reduced-motion toggles.
+   - React view definitions covering filament grid layout, search/filter controls, manifest badge placement, reduced-motion toggles, 3D viewer requirements, and blueprint market chart behaviour (including dummy data schema).
+   - FastAPI contract definitions for `/ships/{type_id}`, `/blueprints/{blueprint_type_id}`, `/market/{type_id}`, `/health`, ensuring response payloads expose manifest metadata + localized labels.
+   - Market data contracts: `/market/{type_id}` time series schema, Forge-only region scope, provider/window parameters, and snapshot persistence expectations.
 
 3. **Generate contract tests** from contracts:
    - Failing tests for ingestion pipeline contract (download, decompress, manifest generation) with fixture responses.
@@ -151,12 +155,12 @@ For ingestion cadence/manifest:
 
 4. **Extract test scenarios** from user stories:
    - Manual ingestion trigger success/failure flows.
- - Re-ingestion idempotency (same checksum, no data churn).
-  - Failure path when assets are missing or checksum validation fails, confirming run abort behaviour and operator feedback.
-  - Frontend dataset view confirming manifest metadata surfaces (timestamp, version).
+   - Re-ingestion idempotency (same checksum, no data churn).
+   - Failure path when assets are missing or checksum validation fails, confirming run abort behaviour and operator feedback.
+   - Frontend dataset view confirming manifest metadata surfaces (timestamp, version), 3D viewer loads, blueprint chart interactions respond to hover, and market API mock/live pathways behave as expected (Forge region).
    - Reduced-motion toggle disabling Background Web animation.
 
-5. **Update agent context** via `.specify/scripts/bash/update-agent-context.sh codex` with new dependency commitments (httpx, tenacity, SQLAlchemy migrations, Express, TanStack Query).
+5. **Update agent context** via `.specify/scripts/bash/update-agent-context.sh codex` with new dependency commitments (httpx, tenacity, FastAPI, SQLAlchemy + Alembic, TanStack Query).
 
 **Output**: `data-model.md`, `contracts/` contents, failing tests, `quickstart.md`, updated agent context.
 
@@ -166,7 +170,7 @@ For ingestion cadence/manifest:
 **Task Generation Strategy**:
 - Load `.specify/templates/tasks-template.md`.
 - Derive ingestion downloader/decompressor/manifest tasks from contracts + data model.
-- Create backend tasks for manifest-aware endpoints and Postgres migrations.
+   - Create backend tasks for manifest-aware FastAPI endpoints, `market/{type_id}` handler, and Postgres migrations (including dogma attribute + blueprint activity tables).
 - Create frontend tasks for filament grid bootstrapping and manifest display.
 - Include Docker + observability tasks to wire shared `data/sde/` volume and health checks.
 
@@ -186,6 +190,11 @@ For ingestion cadence/manifest:
 **Phase 4**: Implementation (execute tasks sequentially, honoring TDD and constitution gates).
 
 **Phase 5**: Validation (run automated tests, execute quickstart, confirm observability dashboards and manifest rotation).
+
+## Change Management
+- Any revision to this feature plan or its paired `spec.md` REQUIRES updating `specs/001-bootstrap-ingestion/tasks.md` before implementation.
+- Re-run the `/tasks` workflow (or manually append tasks) so new scope is represented by actionable work.
+- Reviewers must verify that changes in this directory remain in sync with the top-level `plan.md`, `specify.md`, and root `tasks.md`, blocking merges when coverage gaps persist.
 
 ## Complexity Tracking
 *Fill ONLY if Constitution Check has violations that must be justified*
@@ -212,4 +221,4 @@ For ingestion cadence/manifest:
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v1.1.0 - See `/memory/constitution.md`*
+*Based on Constitution v1.2.0 - See `/memory/constitution.md`*

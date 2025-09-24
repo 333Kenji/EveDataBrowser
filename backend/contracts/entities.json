@@ -1,0 +1,63 @@
+{
+  "ShipCard": {
+    "type_id": 603,
+    "name": "Merlin",
+    "description": "Compact Caldari combat frigate featuring exceptional shield resilience and missile versatility.",
+    "race_id": 2,
+    "faction": "Caldari State",
+    "group": {
+      "id": 25,
+      "name": "Frigate"
+    },
+    "slots": {
+      "high": 3,
+      "med": 4,
+      "low": 2,
+      "rig_slots": 2,
+      "rig_size": "Small"
+    },
+    "hardpoints": {
+      "launcher": 2,
+      "turret": 3
+    },
+    "attributes": {
+      "mass": 1100000,
+      "volume": 15000,
+      "capacity": 135,
+      "align_time": 3.2,
+      "cpu": 170,
+      "powergrid": 45
+    },
+    "manifest": {
+      "version": "v2024.05.14",
+      "imported_at": "2025-09-20T18:07:11Z"
+    }
+  },
+  "BlueprintCard": {
+    "blueprint_type_id": 987654,
+    "name": "Merlin Blueprint",
+    "product": {
+      "type_id": 603,
+      "name": "Merlin"
+    },
+    "activities_present": {
+      "manufacturing": true,
+      "research_me": true,
+      "research_te": true,
+      "invention": false
+    },
+    "manufacturing": {
+      "time": 1200,
+      "runs": 1,
+      "materials": [
+        { "type_id": 34, "name": "Tritanium", "qty": 132000 },
+        { "type_id": 35, "name": "Pyerite", "qty": 33000 }
+      ]
+    },
+    "invention": null,
+    "manifest": {
+      "version": "v2024.05.14",
+      "imported_at": "2025-09-20T18:07:11Z"
+    }
+  }
+}

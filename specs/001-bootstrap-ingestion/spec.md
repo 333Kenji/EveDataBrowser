@@ -69,6 +69,9 @@ Fleet logisticians need to load the latest CCP SDE snapshot so they can explore 
 3. **Given** a logistics analyst opens the Eve Data Browser UI, **When** they filter by ship category or enter a search term, **Then** the React interface displays matching SDE records with manifest metadata badges.
 4. **Given** the ingestion worker cannot find a required SDE asset or detects a checksum mismatch, **When** the run executes, **Then** it aborts safely, preserves the prior manifest, and surfaces a clear failure status for operators.
 5. **Given** the CCP static data page layout changes and assets are not discovered, **When** the watcher runs, **Then** it logs a warning, attempts configured fallback mirrors, and pauses ingestion until an operator supplies a valid archive.
+6. **Given** a reviewer opens the Ships browser and selects a hull, **When** the detail view loads, **Then** a 3D model with faction lighting renders alongside multi-pane cards for characteristics, slots, lore, and stats sourced from the Ship Card contract.
+7. **Given** a reviewer opens the Blueprints browser and selects a blueprint, **When** the detail view loads, **Then** the screen mirrors the EVE industry window with BOM grid, process visualization, outcome panel, and a market-style chart whose hover interactions highlight the relevant series using dummy data.
+8. **Given** live market data is enabled, **When** the system fetches snapshots from Adam4EVE, **Then** the market chart updates to the latest 7/30 day ranges while respecting provider rate limits and retaining prior data.
 
 ### Edge Cases
 - CCP static data page layout changes or required files are unavailable ⇒ ingestion must surface a warning, fall back to configured mirror/manual override, and block the run until an operator supplies a valid archive.
@@ -86,12 +89,27 @@ Fleet logisticians need to load the latest CCP SDE snapshot so they can explore 
 - **FR-007**: System MUST flag and halt ingestion when required files or checksum validations fail, leaving prior manifest data intact.
 - **FR-008**: System MUST allow frontend users to see that SDE-backed datasets reflect the latest manifest version and ingestion timestamp.
 - **FR-009**: System MUST provide a React-based filament UI that supports search, filtering, and manifest badge display for ship and blueprint records.
+- **FR-010**: Ship detail views MUST render a faction-themed 3D model with multi-pane information cards covering bonuses, slots, lore, and core stats.
+- **FR-011**: Blueprint detail views MUST mimic the in-game industry/market UI with Bill of Materials grid, process visualization, and interactive price/volume charts (initially using dummy data).
+- **FR-012**: Market data management MUST ingest provider snapshots (Adam4EVE initial), honour rate limits, store incremental updates, and expose `/market/{type_id}` for UI consumption.
 
 ### Key Entities *(include if feature involves data)*
 - **SDE Manifest**: Label combining version string, checksum, source URL, ingestion timestamp, and status; drives manifest rotation decisions.
 - **SDE Ship Record**: Metadata drawn from `invTypes` + attributes: type identifier, name, group/category references, race/faction, slot counts, attributes.
 - **SDE Blueprint Record**: Manufacturing/reaction blueprint definition, including product identifiers, activities, materials, and times.
 - **Filament UI View**: React component library that surfaces searchable tables, manifest badges, and reduced-motion controls backed by ship and blueprint datasets.
+- **Preset Reference**: Derived tables mapping ships/blueprints to faction/race/group/category for theming and filters.
+- **Blueprint Invention Record**: Separate store for invention data (datacores, base chance, decryptor metadata) linked via `blueprint_type_id`.
+- **3D Asset Descriptor**: Metadata bundle mapping ships to glTF models, faction lighting presets, and fallback thumbnails.
+- **Blueprint Analytics Model**: View model aggregating materials/products with dummy market trend series for chart rendering.
+
+## Data Scope & Usage
+- **Core ship facts** come from `types.yaml` (type ID, group/category, race/faction, base price, hull stats) enriched with `typeDogma.yaml` + `dogmaAttributes.yaml` so the UI can surface slot counts, CPU, powergrid, align time, and similar metrics without hard-coding attribute IDs.
+- **Blueprint activities** are sourced from `blueprints.yaml`, including manufacturing and invention branches (materials, skills, production times, success probabilities) so the Blueprint card can mirror in-game behaviour.
+- **Material composition** is lifted from `typeMaterials.yaml` to power bill of materials summaries and to pre-compute derived ship presets.
+- **Lookup metadata** (`groups.yaml`, `categories.yaml`, `marketGroups.yaml`, `races.yaml`, `factions.yaml`) is retained to support localized labels and theming, while only the English strings are exposed in Phase-1 UI.
+- **Oversized cartography files** (`mapMoons.yaml`, `mapPlanets.yaml`, `mapAsteroidBelts.yaml`) are explicitly skipped during this feature to keep ingestion runs under workstation memory limits; future phases can layer them in with separate tasks.
+- **Market fixtures** continue to rely on Adam4EVE snapshots (`docs/data/market.md`) for live ranges, but the SDE's static `marketGroups.yaml` is used to align type IDs with The Forge market cards until live ingestion is toggled on.
 
 ---
 
