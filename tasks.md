@@ -1,288 +1,162 @@
 # Tasks: Eve Data Browser Phase-1
 
-## Conventions
-- IDs use `M#-T##` keyed to milestones in `plan.md`.
-- Each task lists **Why / Deliverables / Acceptance / Estimate / Depends / Tags**. Keep DoD traceable to `specify.md` and feature docs.
-- When `plan.md`, `specify.md`, or any feature-level spec/plan changes, re-run `/tasks` (or extend this backlog) before implementation to maintain coverage.
-- Feature references: Phase-1 canonical work lives in `specs/001-bootstrap-ingestion/` (spec, plan, tasks, data-model, contracts). Future features should mirror that structure and link back here.
-- Change workflow: update plan/spec → regenerate tasks → reviewers confirm coverage before merge.
+All tasks map to milestones M0–M7 from `plan.md`. Each task lists actionable sub-steps, execution notes, file references, and dependencies.
 
-## Milestone M0 — Ingestion Foundation
-- _Feature reference_: `specs/001-bootstrap-ingestion/plan.md` (§Phase 1) & `specs/001-bootstrap-ingestion/tasks.md`
-- [ ] **M0-T01** Watcher & checksum pipeline (`ingestion/src/watcher.py`, `ingestion/src/fetch_and_load.py`).
-  - **Why**: Detect SDE drops, avoid redundant imports.
-  - **Deliverables**: Filesystem watcher + checksum skip logic; logs summarising runs.
-  - **Acceptance**: Unit tests cover new/missing assets; CLI ingest logs manifest metadata.
-  - **Estimate**: 1.5d
-  - **Depends**: —
-  - **Tags**: `[ingestion][backend]`
-- [ ] **M0-T02** Schema migrations for presets & invention (`backend/db/migrations/001_init.py`).
-  - **Why**: Persist ship/blueprint presets and invention data.
-  - **Deliverables**: Migration adding preset tables, blueprint_invention, indexes.
-  - **Acceptance**: `alembic upgrade` succeeds; schema documented.
-  - **Estimate**: 1.0d
-  - **Depends**: M0-T01
-  - **Tags**: `[db][ingestion]`
-- [ ] **M0-T03** Preset/invention derivation during ingest (`ingestion/src/presets.py`).
-  - **Why**: Populate theming/filter metadata and invention records from SDE.
-  - **Deliverables**: Import step producing preset JSON + DB upserts; tests for representative hulls/blueprints.
-  - **Acceptance**: Preset tables populated after ingest; tests pass.
-  - **Estimate**: 1.0d
-  - **Depends**: M0-T02
-  - **Tags**: `[ingestion][preset]`
-- [ ] **M0-T04** README quickstart (ingestion focus) (`README.md`).
-  - **Why**: Document ingestion workflow for contributors.
-  - **Deliverables**: Step-by-step instructions to drop SDE Zip and run CLI.
-  - **Acceptance**: Walkthrough executed on fresh clone; instructions validated.
-  - **Estimate**: 0.5d
-  - **Depends**: M0-T01
-  - **Tags**: `[docs][ingestion]`
+## Legend
+- **Sub-steps**: Ordered checklist to complete the task.
+- **Notes**: Tips, assumptions, or guardrails.
+- **Depends on**: Upstream task IDs that must finish first (omit if none).
 
-## Milestone M1 — Theme & Shell
-- _Feature reference_: `specs/001-bootstrap-ingestion/spec.md` (§UI / Design System) & `docs/ui/styleguide.md`
-- [ ] **M1-T01** Sidebar + Global Search Skeleton (`frontend/src/components/SidebarRight.tsx`, `frontend/src/components/GlobalSearch.tsx`).
-  - **Why**: Provide right-aligned navigation and unified search entry point.
-  - **Deliverables**: Responsive sidebar with keyboard nav; search box stub returning grouped placeholder results.
-  - **Acceptance**: Keyboard cycling, ARIA roles, grouped mock results render.
-  - **Estimate**: 1.0d
-  - **Depends**: —
-  - **Tags**: `[ui][shell]`
-- [ ] **M1-T02** Design Tokens + Theme Registry (`frontend/src/theme/tokens.ts`).
-  - **Why**: Standardise spacing, radii, colors, shadows across UI.
-  - **Deliverables**: Token module + global styles referencing palette from styleguide.
-  - **Acceptance**: Tokens consumed by sidebar/search components; lint/tests pass.
-  - **Estimate**: 0.5d
-  - **Depends**: M1-T01
-  - **Tags**: `[ui][theme]`
-- [ ] **M1-T03** Filaments/Nnodes Background (`frontend/src/components/FilamentsBackground.tsx`).
-  - **Why**: Provide animated holographic backdrop within perf/a11y budgets.
-  - **Deliverables**: Canvas/WebGL background with throttle + reduced-motion fallback.
-  - **Acceptance**: CPU <3% on dev laptop, pauses when `document.hidden`, obeys `prefers-reduced-motion`.
-  - **Estimate**: 1.5d
-  - **Depends**: M1-T01, M1-T02
-  - **Tags**: `[ui][perf]`
-- [ ] **M1-T04** Routing & EntityCard Frame (`frontend/src/routes/AppShell.tsx`).
-  - **Why**: Display ship/blueprint cards in shared content wrapper.
-  - **Deliverables**: Route skeleton rendering placeholder EntityCard with sidebar/search.
-  - **Acceptance**: Navigating `#/ships` / `#/blueprints` updates active nav; tests cover focus order.
-  - **Estimate**: 0.5d
-  - **Depends**: M1-T01
-  - **Tags**: `[ui][routing]`
+## Milestone M0 — Repo Readiness
+- [ ] **M0-T01 Bootstrap Docker compose stack** (`docker/compose.yml`, `docker/.env.example`)
+  - **Sub-steps**: (a) Define services `db`, `ingestion`, `backend`, `frontend`, shared `data-sde` named volume; (b) Wire environment variables via `.env.example`; (c) Add healthcheck placeholders for backend/frontend.
+  - **Notes**: Use Postgres 15 base image; ensure volume mount for `data/SDE/_downloads/` so manual SDE archives are visible to containers.
+- [ ] **M0-T02 Author multi-stage Dockerfiles** (`docker/Dockerfile.ingestion`, `docker/Dockerfile.backend`, `docker/Dockerfile.frontend`)
+  - **Sub-steps**: (a) Stage 1 install deps; (b) Stage 2 copy minimal runtime; (c) Support dev bind mounts; (d) Document build args in README.
+  - **Notes**: Align Python 3.12 for ingestion/backend; Node 20 for frontend; keep image sizes minimal.
+  - **Depends on**: M0-T01.
+- [ ] **M0-T03 Scaffold tooling & lint** (`pyproject.toml`, `Makefile`, `package.json`)
+  - **Sub-steps**: (a) Configure ruff, black, mypy for Python; (b) Configure eslint, prettier, vitest for frontend; (c) Add Make targets `make lint`, `make test` that run inside containers.
+  - **Notes**: Ensure `docker compose run --rm backend make lint` succeeds.
+  - **Depends on**: M0-T02.
+- [ ] **M0-T04 Stub FastAPI app** (`backend/src/main.py`, `backend/src/api/health.py`, `backend/tests/test_health_smoke.py`)
+  - **Sub-steps**: (a) Create FastAPI app factory; (b) Implement `/health` route returning `{status:"ok"}`; (c) Add pytest smoke test; (d) Update compose command to run `uvicorn`.
+  - **Notes**: Keep file layout consistent with plan (FastAPI, not Express).
+  - **Depends on**: M0-T02, M0-T03.
+- [ ] **M0-T05 Document SDE archive handling** (`README.md`, `.gitignore`, `tasks.md` note)
+  - **Sub-steps**: (a) Ensure `.gitignore` excludes `data/SDE/_downloads/*.zip` and `docs/data/*.zip`; (b) Update README setup to instruct manual placement; (c) Reference this in tasks.
+  - **Notes**: Prevent accidental commits of large CCP data.
+  - **Depends on**: M0-T01.
 
-## Milestone M2 — Ship Browser
-- _Feature reference_: `specs/001-bootstrap-ingestion/spec.md` (Acceptance Scenarios 1–6)
-- [ ] **M2-T01** Expand `/search` endpoint for grouped results (`backend/app/routers/search.py`).
-  - **Why**: Support unified ship/blueprint search response.
-  - **Deliverables**: Endpoint returning `{ships, blueprints}` payload; grouped contract test.
-  - **Acceptance**: Contract tests green; pagination + fuzzy filters verified.
-  - **Estimate**: 1.0d
-  - **Depends**: ingestion schema
-  - **Tags**: `[api][search]`
-- [ ] **M2-T02** Map SDE attributes → ShipCard (`backend/app/services/ship_mapper.py`).
-  - **Why**: Provide ship stats/slots/hardpoints for UI tabs.
-  - **Deliverables**: Mapper aggregating slots, rig data, CPU/PG, base stats.
-  - **Acceptance**: Unit tests covering representative hulls; values match SDE fixtures.
-  - **Estimate**: 1.0d
-  - **Depends**: M2-T01
-  - **Tags**: `[api][ship]`
-- [ ] **M2-T03** Implement `/ships/{type_id}` endpoint (`backend/app/routers/ships.py`).
-  - **Why**: Serve ShipCard contract.
-  - **Deliverables**: Endpoint returning mapped payload + manifest headers.
-  - **Acceptance**: Contract tests pass; 404 for invalid IDs.
-  - **Estimate**: 0.5d
-  - **Depends**: M2-T02
-  - **Tags**: `[api][ship]`
-- [ ] **M2-T04** ShipCard Tabs (`frontend/src/components/cards/ShipCard.tsx`).
-  - **Why**: Present multi-pane ship info matching design system.
-  - **Deliverables**: Tabs (Stats, Slots, Description, Attributes) using shared `Tabs` component.
-  - **Acceptance**: Tab keyboard navigation, content renders from `/ships/:id` data.
-  - **Estimate**: 1.0d
-  - **Depends**: M2-T03, M1-T04
-  - **Tags**: `[ui][ship]`
-- [ ] **M2-T05** Optional 3D Viewer (`frontend/src/components/cards/ShipViewer.tsx`).
-  - **Why**: Provide lightweight 3D experience with feature flag.
-  - **Deliverables**: `FEATURE_SHIP_3D` toggle, react-three-fiber viewer, fallback image.
-  - **Acceptance**: Viewer lazy-loaded, fallback renders when flag off or WebGL unavailable; perf smoke pass.
-  - **Estimate**: 1.5d
-  - **Depends**: M2-T04
-  - **Tags**: `[ui][3d]`
-- [ ] **M2-T06** Reduced-Motion & A11y tests (`frontend/tests/ship_a11y.spec.tsx`).
-  - **Why**: Ensure ship experience accessible.
-  - **Deliverables**: Tests covering reduced-motion behavior, ARIA roles, keyboard focus.
-  - **Acceptance**: Tests pass in CI.
-  - **Estimate**: 0.5d
-  - **Depends**: M2-T04
-  - **Tags**: `[ui][a11y]`
-- [ ] **M2-T07** Derive ship/blueprint presets during SDE import (`ingestion/src/presets.py`).
-  - **Why**: Provide faction/race/group/category metadata for theming and filters.
-  - **Deliverables**: Preset tables populated from SDE; migration + mapper tests.
-  - **Acceptance**: Unit tests confirm preset rows for representative hulls/blueprints.
-  - **Estimate**: 1.0d
-  - **Depends**: M2-T02
-  - **Tags**: `[ingestion][preset]`
+## Milestone M1 — Ingestion Foundation
+- [ ] **M1-T01 Watcher & manifest discovery** (`ingestion/src/watcher.py`, `ingestion/tests/test_watcher.py`)
+  - **Sub-steps**: (a) Implement poller scanning `data/SDE/_downloads/`; (b) Compute checksum & version from filename/manifest; (c) Emit event queue entry when new archive detected; (d) Cover with pytest for new/duplicate files.
+  - **Notes**: Use `pathlib`; guard against partial downloads.
+  - **Depends on**: M0-T01, M0-T05.
+- [ ] **M1-T02 Decompression + manifest writer** (`ingestion/src/pipeline.py`, `ingestion/tests/test_manifest_pipeline.py`)
+  - **Sub-steps**: (a) Decompress `.bz2`; (b) Generate SHA-256; (c) Write `sde_versions` row; (d) Persist JSON derivatives to `data/sde/`.
+  - **Notes**: Ensure idempotent reruns skip unchanged archives; reuse hashed temp directories.
+  - **Depends on**: M1-T01.
+- [ ] **M1-T03 Schema migrations** (`backend/src/db/migrations/V001__sde_tables.py`)
+  - **Sub-steps**: (a) Create tables for manifests, ships, ship presets, dogma attributes/values, blueprints, blueprint skills, industry materials/products; (b) Add indexes noted in `data-model.md` for these entities.
+  - **Notes**: Use Alembic autogenerate for baseline then hand-edit naming; include `downgrade` logic.
+  - **Depends on**: M0-T02.
+- [ ] **M1-T04 Data loaders** (`ingestion/src/dogma.py`, `ingestion/src/blueprints.py`, `ingestion/tests/test_dogma_join.py`)
+  - **Sub-steps**: (a) Join `typeDogma` → `dogmaAttributes` → `dogmaUnits`; (b) Map blueprint activities, skills, invention metadata; (c) Validate via fixtures.
+  - **Notes**: Keep memory footprint manageable by streaming YAML; reuse zipped SDE sample fixtures.
+  - **Depends on**: M1-T02, M1-T03.
+- [ ] **M1-T05 Quickstart updates** (`docs/quickstart.md`)
+  - **Sub-steps**: (a) Document manual SDE drop; (b) Provide ingestion CLI command; (c) Explain verifying manifest row; (d) Mention `.gitignore` enforcement.
+  - **Notes**: Reference tasks to keep instructions consistent.
+  - **Depends on**: M1-T02.
 
-## Milestone M3 — Blueprint Browser
-- _Feature reference_: `specs/001-bootstrap-ingestion/spec.md` (Acceptance Scenario 7, BlueprintCard requirements)
-- [ ] **M3-T01** Implement `/blueprints/{blueprint_type_id}` endpoint (`backend/app/routers/blueprints.py`).
-  - **Why**: Expose blueprint materials/time/product data.
-  - **Deliverables**: Endpoint returning contract with activities flags and invention placeholders.
-  - **Acceptance**: Contract tests pass; handles missing invention gracefully.
-  - **Estimate**: 0.75d
-  - **Depends**: M2-T02
-  - **Tags**: `[api][blueprint]`
-- [ ] **M3-T02** BlueprintCard Split Layout (`frontend/src/components/cards/BlueprintCard.tsx`).
-  - **Why**: Mirror EVE industry panel.
-  - **Deliverables**: Top Calculator (materials/time/runs + activity buttons), bottom MarketStats placeholder.
-  - **Acceptance**: Buttons toggle active state; materials list renders from API.
-  - **Estimate**: 1.0d
-  - **Depends**: M3-T01, M1-T04
-  - **Tags**: `[ui][blueprint]`
-- [ ] **M3-T03** Blueprint Filters (`frontend/src/components/Filters.tsx`).
-  - **Why**: Allow filtering by product category/activity presence.
-  - **Deliverables**: Filter controls wired to search query params.
-  - **Acceptance**: Filtering triggers API calls; tests confirm state syncing.
-  - **Estimate**: 0.75d
-  - **Depends**: M2-T01, M3-T01
-  - **Tags**: `[ui][filters]`
-- [ ] **M3-T04** Mock MarketStats Panel (`frontend/src/components/cards/BlueprintMarketStats.tsx`).
-  - **Why**: Visualize price/volume using placeholder data (pre-market MVP).
-  - **Deliverables**: Chart displaying dummy series; hover highlight handles BOM selection events.
-  - **Acceptance**: Chart renders with synthetic data; hover events triggered from Calculator.
-  - **Estimate**: 1.0d
-  - **Depends**: M3-T02
-  - **Tags**: `[ui][chart]`
-- [ ] **M3-T05** Blueprint invention schema + mapper (`backend/app/services/blueprint_invention.py`).
-  - **Why**: Persist invention data separately while exposing inline via API.
-  - **Deliverables**: `blueprint_invention` table + mapper populating datacores/decryptors/base chance.
-  - **Acceptance**: Migration + tests verifying sample blueprint invention data; API includes invention block.
-  - **Estimate**: 1.0d
-  - **Depends**: M2-T02, M3-T01
-  - **Tags**: `[data][blueprint]`
+## Milestone M2 — Theme & Shell
+- [ ] **M2-T01 Design tokens** (`frontend/src/styles/tokens.ts`, `docs/ui/styleguide.md`)
+  - **Sub-steps**: (a) Export color palette, typography, spacing; (b) Update styleguide doc with usage; (c) Add unit snapshot for tokens.
+  - **Notes**: Match constitution gradient palette (#0a0b10 base, #22d3ee/#8b5cf6/#22c55e accents).
+  - **Depends on**: M0-T03.
+- [ ] **M2-T02 Sidebar navigation** (`frontend/src/components/Sidebar.tsx`, `frontend/tests/components/Sidebar.spec.tsx`)
+  - **Sub-steps**: (a) Render Ships/Blueprints links; (b) Sync selection with router param; (c) Add keyboard focus tests.
+  - **Notes**: Provide aria attributes for nav landmarks.
+  - **Depends on**: M0-T04.
+- [ ] **M2-T03 Search skeleton** (`frontend/src/components/SearchShell.tsx`, `frontend/src/hooks/useSearchParams.ts`)
+  - **Sub-steps**: (a) Wire global search input; (b) Stub results list with placeholders; (c) Ensure manifest badge placeholder ready.
+  - **Notes**: Use TanStack Query for eventual data fetch; initial stub returns static data.
+  - **Depends on**: M2-T02.
+- [ ] **M2-T04 Background filaments** (`frontend/src/components/BackgroundWeb.tsx`, `frontend/tests/components/BackgroundWeb.spec.tsx`)
+  - **Sub-steps**: (a) Integrate animation; (b) Respect `prefers-reduced-motion`; (c) Provide toggle hook; (d) Add FPS/perf test harness.
+  - **Notes**: Keep CPU < 3% on dev machine; degrade gracefully.
+  - **Depends on**: M2-T01.
 
-## Milestone M4 — Market Data (MVP)
-- _Feature reference_: `docs/data/market.md`, `specs/001-bootstrap-ingestion/spec.md` (§Market Data Management)
-- [ ] **M4-T01** Create `market_snapshots` schema + indexes (`backend/db/migrations/002_market_snapshots.py`).
-  - **Why**: Persist market data.
-  - **Deliverables**: Migration creating table + retention indexes.
-  - **Acceptance**: `alembic upgrade` succeeds; schema documented.
-  - **Estimate**: 0.5d
-  - **Depends**: M0 milestones
-  - **Tags**: `[data][db]`
-- [ ] **M4-T02** Shared RateLimiter module (`backend/app/services/rate_limiter.py`).
-  - **Why**: Enforce provider rate limits.
-  - **Deliverables**: Token-bucket implementation with jittered backoff + tests.
-  - **Acceptance**: Unit tests confirm throttling/backoff behavior.
-  - **Estimate**: 0.75d
-  - **Depends**: —
-  - **Tags**: `[data][infra]`
-- [ ] **M4-T03** Provider adapter skeletons (`backend/app/providers/adam4eve.py`, `.../fuzzwork.py`).
-  - **Why**: Prepare data ingestion pipeline (mock first).
-  - **Deliverables**: Adapters returning synthetic series, using RateLimiter.
-  - **Acceptance**: Fixture-based tests pass; mock data stored in snapshots table.
-  - **Estimate**: 1.0d
-  - **Depends**: M3-T01, M3-T02
-  - **Tags**: `[data][provider]`
-- [ ] **M4-T04** `/market/{type_id}` API (mock) (`backend/app/routers/market.py`).
-  - **Why**: Serve chart data to UI.
-  - **Deliverables**: Endpoint returning synthetic 7/30d series; pagination metadata.
-  - **Acceptance**: Contract tests pass; provider/window params validated.
-  - **Estimate**: 0.75d
-  - **Depends**: M3-T03
-  - **Tags**: `[api][market]`
-- [ ] **M4-T05** UI Market Chart integration (`frontend/src/components/cards/BlueprintMarketChart.tsx`).
-  - **Why**: Visualize market data.
-  - **Deliverables**: Chart component consuming `/market/:type_id` (mock path), highlight BOM selections.
-  - **Acceptance**: Chart renders with dummy series; hover linking works; reduced-motion fallback supported.
-  - **Estimate**: 1.0d
-  - **Depends**: M3-T04, M2-T02
-  - **Tags**: `[ui][chart]`
-- [ ] **M4-T06** Verify provider endpoints & limits (`docs/data/market.md`, adapters). 
-  - **Why**: Ensure Adam4EVE/Fuzzwork integrations comply with published API docs.
-  - **Deliverables**: Documented endpoints, rate limits, expected payload formats; automated smoke test hitting mock endpoints.
-  - **Acceptance**: Documentation updated; adapter tests reference confirmed formats.
-  - **Estimate**: 0.5d
-  - **Depends**: M3-T03
-  - **Tags**: `[data][provider]`
+## Milestone M3 — Ship Browser
+- [ ] **M3-T01 `/search` endpoint** (`backend/src/api/search.py`, `backend/tests/test_search.py`)
+  - **Sub-steps**: (a) Accept entity filter; (b) Query repository; (c) Include manifest headers; (d) Cover pagination in tests.
+  - **Notes**: Use async SQLAlchemy; return grouped payload matching contracts.
+  - **Depends on**: M1-T03, M1-T04.
+- [ ] **M3-T02 Ship repository helpers** (`backend/src/db/repository.py`, `backend/tests/test_repository_ships.py`)
+  - **Sub-steps**: (a) Expose ship query with joins to presets, dogma values; (b) Provide filter helpers for faction/race/group.
+  - **Notes**: Align with `data-model.md` fields.
+  - **Depends on**: M1-T03, M1-T04.
+- [ ] **M3-T03 ShipCard UI** (`frontend/src/components/cards/ShipCard.tsx`, `frontend/tests/components/ShipCard.spec.tsx`)
+  - **Sub-steps**: (a) Render Stats/Slots/Attributes tabs; (b) Integrate manifest badge; (c) Connect to `/ships/:id` data hook.
+  - **Notes**: Provide fallback image when 3D viewer disabled.
+  - **Depends on**: M3-T01, M3-T02, M2-T03.
+- [ ] **M3-T04 Optional 3D viewer** (`frontend/src/components/cards/ShipViewer.tsx`, `frontend/src/assets/ships/manifest.json`)
+  - **Sub-steps**: (a) Load glTF assets lazily; (b) Add feature flag; (c) Provide control hints and accessibility alt text.
+  - **Notes**: Keep bundle size budget, load behind dynamic import.
+  - **Depends on**: M3-T03.
 
-## Milestone M5 — Market Data (Live)
-- _Feature reference_: `docs/data/market.md`
-- [ ] **M5-T01** Adam4EVE live adapter (`backend/app/providers/adam4eve_live.py`).
-  - **Why**: Pull real market data respecting rate limits.
-  - **Deliverables**: Adapter fetching incremental data since last snapshot; error handling for rate limit responses.
-  - **Acceptance**: Integration test with recorded fixtures populates snapshots; rate limit metrics logged.
-  - **Estimate**: 1.5d
-  - **Depends**: M3-T03
-  - **Tags**: `[data][provider]`
-- [ ] **M5-T02** Incremental scheduler + retention job (`backend/app/jobs/market_scheduler.py`).
-  - **Why**: Automate periodic fetch/pruning.
-  - **Deliverables**: Background task scheduling cadence + pruning based on retention config.
-  - **Acceptance**: Job runs in dev compose, logs summarise updates, older rows pruned in tests.
-  - **Estimate**: 1.0d
-  - **Depends**: M4-T01, M3-T01
-  - **Tags**: `[data][ops]`
-- [ ] **M5-T03** Wire UI to live market data (`frontend/src/components/cards/BlueprintMarketChart.tsx`).
-  - **Why**: Replace mock dataset with real series.
-  - **Deliverables**: Chart requests `/market/:type_id` live, provider/window controls exposed.
-  - **Acceptance**: Chart updates when switching window/provider; loading states + error toasts handled.
-  - **Estimate**: 0.75d
-  - **Depends**: M4-T01, M3-T05
-  - **Tags**: `[ui][chart]`
-- [ ] **M5-T04** Provider telemetry + alerts (`backend/app/observability/market_metrics.py`).
-  - **Why**: Monitor rate limits and data freshness.
-  - **Deliverables**: Metrics counters/gauges, alert thresholds documented.
-  - **Acceptance**: Metrics exported via Prometheus; docs updated.
-  - **Estimate**: 0.5d
-  - **Depends**: M4-T01
-  - **Tags**: `[ops][observability]`
-- [ ] **M5-T05** Fuzzwork adapter preview gating (`backend/app/providers/fuzzwork.py`).
-  - **Why**: Prepare secondary provider without enabling by default.
-  - **Deliverables**: Adapter hitting Fuzzwork public endpoints for Forge; feature flag to enable later.
-  - **Acceptance**: Fixtures confirm payload parsing; adapter disabled by default.
-  - **Estimate**: 0.75d
-  - **Depends**: M3-T03
-  - **Tags**: `[data][provider]`
+## Milestone M4 — Blueprint Browser
+- [ ] **M4-T01 Blueprint repository helpers** (`backend/src/db/repository.py`, `backend/tests/test_repository_blueprints.py`)
+  - **Sub-steps**: (a) Query activities/materials/products/skills; (b) Compose contract payload; (c) Add caching hints.
+  - **Notes**: Use same manifest filter as ships.
+  - **Depends on**: M1-T03, M1-T04.
+- [ ] **M4-T02 `/blueprints/:id` endpoint** (`backend/src/api/blueprints.py`, `backend/tests/test_blueprints.py`)
+  - **Sub-steps**: (a) Return full BlueprintCard payload; (b) Handle 404s; (c) Inject manifest headers.
+  - **Notes**: Keep response consistent with contract JSON stored in `backend/contracts/entities.json`.
+  - **Depends on**: M4-T01.
+- [ ] **M4-T03 BlueprintCard UI** (`frontend/src/components/cards/BlueprintCard.tsx`, `frontend/tests/components/BlueprintCard.spec.tsx`)
+  - **Sub-steps**: (a) Render calculator with BOM grid; (b) Provide activity buttons; (c) Display mock market stats panel (placeholder data from local JSON).
+  - **Notes**: Connect to `/blueprints/:id`; share filter controls with ship view.
+  - **Depends on**: M2-T03, M4-T02.
+- [ ] **M4-T04 Filters integration** (`frontend/src/components/Filters.tsx`, `frontend/tests/components/Filters.spec.tsx`)
+  - **Sub-steps**: (a) Build shared filter component; (b) Sync query params; (c) Call search API with filter args.
+  - **Notes**: Provide accessible multi-select controls.
+  - **Depends on**: M3-T01, M4-T03.
 
-## Milestone M6 — Polish & Perf
-- _Feature reference_: `docs/ui/styleguide.md`, `docs/data/market.md`
-- [ ] **M6-T01** Lazy-load heavy components & code-splitting (`frontend/src/routes/AppShell.tsx`).
-  - **Why**: Meet bundle and TTI budgets.
-  - **Deliverables**: Dynamic imports for 3D viewer, market chart, heavy panels.
-  - **Acceptance**: Bundle <250KB gz (excl. three.js); TTI ≤2s without WebGL.
-  - **Estimate**: 0.75d
-  - **Depends**: M1-T05, M3-T05
-  - **Tags**: `[perf][ui]`
-- [ ] **M6-T02** Reduced-motion & a11y regression tests (`frontend/tests/accessibility/full.spec.tsx`).
-  - **Why**: Ensure final UX accessible.
-  - **Deliverables**: Comprehensive tests covering tabs, filters, 3D toggle, chart interactions.
-  - **Acceptance**: Tests pass in CI; manual audit checklist updated.
-  - **Estimate**: 0.5d
-  - **Depends**: M1-T06, M3-T05
-  - **Tags**: `[a11y][qa]`
-- [ ] **M6-T03** Skeletons + error handling (`frontend/src/components/states/*`).
-  - **Why**: Improve UX resiliency.
-  - **Deliverables**: Loading skeletons, empty states, toast errors for API failures.
-  - **Acceptance**: QA walkthrough verifies states; screenshot artefacts captured.
-  - **Estimate**: 0.75d
-  - **Depends**: M1–M4 UI tasks
-  - **Tags**: `[ui][ux]`
-- [ ] **M6-T04** Documentation pass (`README.md`, `docs/ui/styleguide.md`, `docs/data/market.md`).
-  - **Why**: Communicate workflows, feature flags, perf budgets.
-  - **Deliverables**: Updated quickstart, perf budgets, feature flag instructions.
-  - **Acceptance**: Docs reviewed; quickstart executed end-to-end.
-  - **Estimate**: 0.5d
-  - **Depends**: All milestones
-  - **Tags**: `[docs]`
-- [ ] **M6-T05** CI enhancements (`.github/workflows/ci.yml`).
-  - **Why**: Enforce lint/tests/contract/perf checks.
-  - **Deliverables**: Workflow running lint, unit, accessibility, contract tests; publishes entity contracts artefact.
-  - **Acceptance**: CI green on branch; failing tests block merge.
-  - **Estimate**: 0.75d
-  - **Depends**: M1-T01..M4-T04
-  - **Tags**: `[ci][ops]`
+## Milestone M5 — Market Data (MVP)
+- [ ] **M5-T01 Market schema + rate limiter** (`backend/src/db/migrations/V002__market_tables.py`, `backend/src/services/rate_limiter.py`)
+  - **Sub-steps**: (a) Create follow-up migration for `market_snapshots` table + supporting indexes; (b) Implement token-bucket limiter with jitter.
+  - **Notes**: Config defaults 30 requests/minute from research doc.
+  - **Depends on**: M1-T03.
+- [ ] **M5-T02 Provider stubs** (`ingestion/src/market/adam4eve_stub.py`, `ingestion/src/market/fuzzwork_stub.py`, `ingestion/tests/test_market_stub.py`)
+  - **Sub-steps**: (a) Return deterministic mock series; (b) Respect limiter; (c) Unit tests for windows 7/30 day.
+  - **Notes**: Document endpoints and TODOs in `docs/data/market.md`.
+  - **Depends on**: M5-T01.
+- [ ] **M5-T03 `/market/{type_id}` endpoint** (`backend/src/api/market.py`, `backend/tests/test_market.py`)
+  - **Sub-steps**: (a) Serve mock data; (b) Validate provider/window params; (c) Include manifest + provider headers.
+  - **Notes**: Provide caching hints via ETag.
+  - **Depends on**: M5-T02.
+- [ ] **M5-T04 Market chart UI** (`frontend/src/components/cards/BlueprintMarketChart.tsx`, `frontend/tests/components/BlueprintMarketChart.spec.tsx`)
+  - **Sub-steps**: (a) Visualise 7/30-day series; (b) Highlight BOM hover; (c) Show provider badge.
+  - **Notes**: Use charting lib with reduced-motion fallback.
+  - **Depends on**: M5-T03, M4-T03.
+
+## Milestone M6 — Market Data (Live)
+- [ ] **M6-T01 Adam4EVE live adapter** (`ingestion/src/market/adam4eve.py`, `ingestion/tests/test_market_live.py`)
+  - **Sub-steps**: (a) Call live API; (b) Handle pagination/backoff; (c) Persist new snapshots only; (d) Log rate usage.
+  - **Notes**: Reuse limiter config; store raw payload in JSON column as per data model.
+  - **Depends on**: M5-T02, M1-T03.
+- [ ] **M6-T02 Scheduler + retention** (`ingestion/src/scheduler.py`, `docker/entrypoints/cron.sh`, `ingestion/tests/test_scheduler.py`)
+  - **Sub-steps**: (a) Implement cadence (default 30 min with jitter); (b) Add pruning job for >90 day data; (c) Ensure manual trigger supported.
+  - **Notes**: Document schedule in `docs/data/market.md`.
+  - **Depends on**: M6-T01.
+- [ ] **M6-T03 Live chart integration** (`frontend/src/components/cards/BlueprintMarketChart.tsx`, `frontend/tests/components/BlueprintMarketChart.live.spec.tsx`)
+  - **Sub-steps**: (a) Flip feature flag to live data; (b) Add provider/window controls; (c) Update tests to use recorded fixtures.
+  - **Notes**: Keep graceful fallback to mock path for offline dev.
+  - **Depends on**: M6-T01, M5-T04.
+
+## Milestone M7 — Polish & Perf
+- [ ] **M7-T01 Lazy loading & code splitting** (`frontend/vite.config.ts`, `frontend/src/routes/*.tsx`)
+  - **Sub-steps**: (a) Configure dynamic imports for heavy components; (b) Verify bundle size; (c) Update perf docs.
+  - **Notes**: Ensure 3D viewer + chart only load when needed.
+  - **Depends on**: M3-T04, M5-T04.
+- [ ] **M7-T02 Skeletons, error states, toasts** (`frontend/src/components/states/*`, `frontend/tests/components/States.spec.tsx`)
+  - **Sub-steps**: (a) Implement skeletons for search/cards; (b) Add toast provider; (c) Cover with accessibility tests.
+  - **Notes**: Keep copy aligned with specify.md tone.
+  - **Depends on**: M3-T03, M4-T03, M5-T04.
+- [ ] **M7-T03 Docs & CI polish** (`README.md`, `docs/ui/styleguide.md`, `docs/data/market.md`, `.github/workflows/ci.yml`)
+  - **Sub-steps**: (a) Update docs to reflect final features and SDE handling; (b) Add CI workflow covering lint/tests/contracts/perf smoke; (c) Include artifact publishing for contracts.
+  - **Notes**: Ensure constitution guardrails called out (FastAPI, Docker, accessibility).
+  - **Depends on**: All prior milestones.
+- [ ] **M7-T04 Performance validation** (`docs/performance.md`, `scripts/perf_smoke.sh`)
+  - **Sub-steps**: (a) Measure ingestion <10 min; (b) UI render TTI ≤2s; (c) Record metrics in docs; (d) Add script for repeatable checks.
+  - **Notes**: Use sample SDE and recorded market data for repeatable tests.
+  - **Depends on**: M7-T01, M6-T03.
 
 ## Definition of Done Checklist
-- [ ] Ship & blueprint browsers functional with cinematic UI and accessibility guarantees.
-- [ ] `/search`, `/ships/:id`, `/blueprints/:id`, `/market/:type_id` API contracts delivered and tested.
-- [ ] Market snapshots + rate-limited adapters populate Postgres with retention.
-- [ ] UI meets performance budgets (TTI ≤2s no WebGL, animation CPU ≤3%).
-- [ ] Docs (README, styleguide, market plan) and CI pipeline updated; change-management workflow enforced.
+- Latest SDE ingested from manual drop in `data/SDE/_downloads/`, with manifests recorded and archives excluded from Git by `.gitignore`.
+- FastAPI endpoints (`/health`, `/search`, `/ships/:id`, `/blueprints/:id`, `/market/:type_id`) return documented contracts with manifest metadata.
+- React UI delivers ship/blueprint browsers with accessibility and reduced-motion compliance, including optional 3D viewer and market charts.
+- Market adapters enforce rate limits and retention, surfacing Forge data to the UI.
+- Docs/CI updated to mirror milestones; change management rules observed per plan and constitution.

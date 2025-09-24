@@ -1,17 +1,18 @@
 # Eve Data Browser Implementation Plan
 
 ## Roadmap Overview
-Phase-1 objective: deliver a polished Eve-inspired browser that ingests local SDE archives, serves FastAPI endpoints, and presents cinematic ship/blueprint experiences with market insight. Work is organised into milestones M0–M5.
+Phase-1 objective: deliver a polished Eve-inspired browser that ingests local SDE archives, serves FastAPI endpoints, and presents cinematic ship/blueprint experiences with market insight. Work is organised into milestones M0–M7.
 
 | Milestone | Goal | Target Window | Exit Criteria |
 |-----------|------|---------------|---------------|
-| **M0 — Ingestion Foundation** | Solidify SDE ingest, schema, presets | Week 0 | Watcher/CLI ingests newest archive; `sde_versions` + core tables populated; presets/invention tables generated; ingestion tests/logs green. |
-| **M1 — Theme & Shell** | Establish sidebar layout, global search skeleton, filaments background, and design tokens | Week 1 | App loads with right sidebar + grouped search stub, tokens applied, filaments animation within perf/a11y budgets. |
-| **M2 — Ship Browser** | Ship search + detail experience with optional 3D | Week 2 | `/search` + `/ships/:id` live; ShipCard tabs populated; attribute/slot mapping complete; 3D viewer behind feature flag with fallback image. |
-| **M3 — Blueprint Browser** | Blueprint calculator + market stats split view | Week 3 | `/blueprints/:id` live; split card renders materials/time from SDE; activity buttons active; mock market stats displayed. |
-| **M4 — Market Data (MVP)** | Scaffold market data model + mock API | Week 4 | `market_snapshots` schema + rate limiter ready; provider adapters produce Forge mock data; `/market/:type_id` returns synthetic 7/30d series; UI chart consumes mock path. |
-| **M5 — Market Data (Live)** | Integrate Adam4EVE with incremental updates | Week 5 | Live adapter populates Forge snapshots respecting rate limits; incremental scheduler running; chart shows latest 7/30d live data; retention/pruning job active. |
-| **M6 — Polish & Perf** | Finalise accessibility, performance, docs, CI | Week 6 | Reduced motion + lazy loading done; skeletons/error toasts active; README/docs/CI updated; perf budgets met (TTI ≤2s, bundle <250KB gz sans three.js). |
+| **M0 — Repo Readiness** | Ensure tooling, Docker stack, FastAPI skeleton, and linting are in place | Week 0 | Compose stack boots ingestion/backend/frontend containers; FastAPI `/health` online; lint/test commands wired; `.gitignore` excludes SDE archives explicitly. |
+| **M1 — Ingestion Foundation** | Solidify SDE ingest, schema, presets | Week 1 | Watcher/CLI ingests newest archive from `data/SDE/_downloads/`; `sde_versions` + core tables populated; presets/invention tables generated; ingestion tests/logs green. |
+| **M2 — Theme & Shell** | Establish sidebar layout, global search skeleton, filaments background, and design tokens | Week 2 | App loads with right sidebar + grouped search stub, tokens applied, filaments animation within perf/a11y budgets. |
+| **M3 — Ship Browser** | Ship search + detail experience with optional 3D | Week 3 | `/search` + `/ships/:id` live; ShipCard tabs populated; attribute/slot mapping complete; 3D viewer behind feature flag with fallback image. |
+| **M4 — Blueprint Browser** | Blueprint calculator + market stats split view | Week 4 | `/blueprints/:id` live; split card renders materials/time from SDE; activity buttons active; mock market stats displayed. |
+| **M5 — Market Data (MVP)** | Scaffold market data model + mock API | Week 5 | `market_snapshots` schema + rate limiter ready; provider adapters produce Forge mock data; `/market/:type_id` returns synthetic 7/30d series; UI chart consumes mock path. |
+| **M6 — Market Data (Live)** | Integrate Adam4EVE with incremental updates | Week 6 | Live adapter populates Forge snapshots respecting rate limits; incremental scheduler running; chart shows latest 7/30d live data; retention/pruning job active. |
+| **M7 — Polish & Perf** | Finalise accessibility, performance, docs, CI | Week 7 | Reduced motion + lazy loading done; skeletons/error toasts active; README/docs/CI updated; perf budgets met (TTI ≤2s, bundle <250KB gz sans three.js). |
 
 ## Work Streams
 1. **Ingestion** — Watcher/CLI, schema migrations, presets, invention data.
@@ -22,43 +23,49 @@ Phase-1 objective: deliver a polished Eve-inspired browser that ingests local SD
 6. **Ops & Perf** — CI, docs, reduced motion, lazy loading, retention jobs.
 
 ## Milestone Details
-### M0 — Ingestion Foundation
+### M0 — Repo Readiness
+- Author Docker compose stack with services for Postgres, ingestion worker, FastAPI backend (uvicorn), and frontend build container.
+- Scaffold multi-stage Dockerfiles, shared Python/Node tooling, and baseline lint/test commands.
+- Stub FastAPI app with `/health` route and ensure CI hooks exist for lint/test (even if manual initially).
+- Document `.gitignore` coverage so SDE archives placed in `data/SDE/_downloads/` remain untracked.
+
+### M1 — Ingestion Foundation
 - Implement filesystem watcher or poller for `data/SDE/_downloads/` with checksum skip + manifest logging.
 - Run migrations creating core SDE tables, preset tables, blueprint invention, and supporting indexes.
 - Extend ingestion pipeline to populate presets/invention data alongside JSON derivatives.
 - Verify ingestion unit tests (missing asset, checksum mismatch) and update quickstart docs.
 
-### M1 — Theme & Shell
+### M2 — Theme & Shell
 - Implement right sidebar navigation with unified search scaffold and grouped result placeholder.
 - Define design tokens (colors, spacing, radii, shadows, typography) and apply to layout components.
 - Implement filaments/nodes animated background respecting ≤3% CPU and `prefers-reduced-motion`.
 - Ensure routing skeleton renders EntityCard frame; verify keyboard navigation/a11y baseline.
 
-### M2 — Ship Browser
+### M3 — Ship Browser
 - Complete `/search` endpoint returning grouped ships/blueprints and expose grouped response to UI.
 - Map SDE attributes (slots, hardpoints, rigs, cpu/pg, mass, volume) to ShipCard contract.
 - Derive preset tables (faction, race, group, category) from SDE during import for theming/filter defaults.
 - Implement ShipCard tabs (Stats, Slots, Description, Attributes) and integrate optional Three.js viewer behind `FEATURE_SHIP_3D` with fallback imagery and controls guidance.
 - Validate reduced-motion flow (disable animation/3D) and a11y (ARIA tabs, keyboard navigation).
 
-### M3 — Blueprint Browser
+### M4 — Blueprint Browser
 - Deliver `/blueprints/{blueprint_type_id}` endpoint with materials/time data, activities flags, invention placeholders.
 - Build BlueprintCard split layout: Calculator top (materials/time/runs, activity buttons row), MarketStats bottom (mock price/volume panel).
 - Link blueprint product back to ship card and ensure filters (product category/activity presence) function.
 
-### M4 — Market Data (MVP)
+### M5 — Market Data (MVP)
 - Create `market_snapshots` table and shared rate limiter module.
 - Scaffold provider adapters (Adam4EVE live stub, Fuzzwork placeholder) capable of returning mock time-series data since last timestamp.
 - Implement `/market/{type_id}?provider=&window=` API returning synthetic 7/30d series; UI chart consumes endpoint and highlights BOM selections.
 - Document provider endpoints, rate limits, payload formats, and confirm Forge-only scope in `docs/data/market.md`.
 
-### M5 — Market Data (Live)
+### M6 — Market Data (Live)
 - Implement Adam4EVE adapter with incremental fetch, backoff, and retention configuration.
 - Schedule background task for periodic updates + pruning of snapshots older than configured window.
 - Replace mock data path with live chart data; expose provider/window controls; monitor rate limit metrics.
 - Maintain Fuzzwork adapter behind feature flag pending future activation.
 
-### M6 — Polish & Perf
+### M7 — Polish & Perf
 - Lazy-load heavy components (3D viewer, market chart), code-split bundles (<250KB gz without three.js).
 - Add skeletons, empty/error states, toast notifications; ensure reduced motion + parallax controls documented.
 - Update README, `docs/ui/styleguide.md`, `docs/data/market.md`; enhance CI (lint/tests/contracts/perf smoke).
@@ -73,7 +80,7 @@ Phase-1 objective: deliver a polished Eve-inspired browser that ingests local SD
 | UI accessibility regressions | automated Axe audits, manual keyboard testing per milestone |
 
 ## Dependencies
-- Local CCP SDE dump in `data/SDE/_downloads/`.
+- Local CCP SDE dump manually placed in `data/SDE/_downloads/` (ensure `.gitignore` excludes archives).
 - Adam4EVE API access (public endpoints) and future Fuzzwork endpoints.
 - Docker Engine + compose plugin; Node.js 20 + Python 3.12 in containers.
 - 3D ship assets (glTF placeholders) and faction lighting presets.
