@@ -7,121 +7,121 @@
 ```
 1. Load plan.md from feature directory
    → If not found: ERROR "No implementation plan found"
-   → Extract: tech stack, libraries, structure
+   → Extract: ingestion scope, API surface, UI requirements, observability notes
 2. Load optional design documents:
-   → data-model.md: Extract entities → model tasks
-   → contracts/: Each file → contract test task
-   → research.md: Extract decisions → setup tasks
+   → data-model.md: Extract entities, ingestion run states → model tasks
+   → contracts/: Each file → contract test + implementation task
+   → research.md & quickstart.md: Extract decisions → setup, accessibility, and Docker tasks
 3. Generate tasks by category:
-   → Setup: project init, dependencies, linting
-   → Tests: contract tests, integration tests
-   → Core: models, services, CLI commands
-   → Integration: DB, middleware, logging
-   → Polish: unit tests, performance, docs
+   → Setup: Docker compose, Postgres migrations, dependency installs
+   → Tests: ingestion parser fixtures, API contract tests, UI accessibility tests
+   → Core: ingestion pipelines, DB migrations, API handlers, React views
+   → Integration: seeds, metrics, health checks, container wiring
+   → Polish: docs, manual validation, rollout notes
 4. Apply task rules:
-   → Different files = mark [P] for parallel
-   → Same file = sequential (no [P])
+   → Different files/services = mark [P] for parallel
+   → Same file/service = sequential (no [P])
    → Tests before implementation (TDD)
 5. Number tasks sequentially (T001, T002...)
-6. Generate dependency graph
+6. Generate dependency graph covering ingestion → API → UI flow
 7. Create parallel execution examples
 8. Validate task completeness:
    → All contracts have tests?
-   → All entities have models?
-   → All endpoints implemented?
+   → All entities have migrations/models?
+   → UI flows have accessibility coverage?
 9. Return: SUCCESS (tasks ready for execution)
 ```
 
 ## Format: `[ID] [P?] Description`
-- **[P]**: Can run in parallel (different files, no dependencies)
+- **[P]**: Can run in parallel (different files/services, no dependencies)
 - Include exact file paths in descriptions
 
 ## Path Conventions
-- **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
-- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+- **Ingestion worker**: `ingestion/src/`, `ingestion/tests/`
+- **API**: `backend/src/`, `backend/tests/`
+- **Frontend**: `frontend/src/`, `frontend/tests/`
+- **Docker & ops**: `docker/`, `.env.example`, `docs/`
+- Adjust names if the plan defines an alternate structure (document the change)
 
 ## Phase 3.1: Setup
-- [ ] T001 Create project structure per implementation plan
-- [ ] T002 Initialize [language] project with [framework] dependencies
-- [ ] T003 [P] Configure linting and formatting tools
+- [ ] T001 Provision `docker/compose.yml` service entries for ingestion, backend, frontend, and Postgres
+- [ ] T002 Define base Dockerfiles (`docker/Dockerfile.ingestion`, `docker/Dockerfile.backend`, `docker/Dockerfile.frontend`)
+- [ ] T003 [P] Initialize project dependencies (pnpm workspaces or equivalent) and configure shared linting/formatting
 
 ## Phase 3.2: Tests First (TDD) ⚠️ MUST COMPLETE BEFORE 3.3
 **CRITICAL: These tests MUST be written and MUST FAIL before ANY implementation**
-- [ ] T004 [P] Contract test POST /api/users in tests/contract/test_users_post.py
-- [ ] T005 [P] Contract test GET /api/users/{id} in tests/contract/test_users_get.py
-- [ ] T006 [P] Integration test user registration in tests/integration/test_registration.py
-- [ ] T007 [P] Integration test auth flow in tests/integration/test_auth.py
+- [ ] T004 Author ingestion parser regression test using latest Eve SDE fixture in `ingestion/tests/parser.test.ts`
+- [ ] T005 Create migration + seed verification test in `backend/tests/db/migrations.spec.ts`
+- [ ] T006 [P] Write API contract test for `GET /api/items` in `backend/tests/contract/items.get.spec.ts`
+- [ ] T007 [P] Add React accessibility test for filament grid filtering in `frontend/tests/components/FilamentGrid.spec.tsx`
 
 ## Phase 3.3: Core Implementation (ONLY after tests are failing)
-- [ ] T008 [P] User model in src/models/user.py
-- [ ] T009 [P] UserService CRUD in src/services/user_service.py
-- [ ] T010 [P] CLI --create-user in src/cli/user_commands.py
-- [ ] T011 POST /api/users endpoint
-- [ ] T012 GET /api/users/{id} endpoint
-- [ ] T013 Input validation
-- [ ] T014 Error handling and logging
+- [ ] T008 Implement YAML ingestion pipeline with checksum logging in `ingestion/src/pipeline.ts`
+- [ ] T009 Apply Postgres migration and seed scripts in `backend/src/db/migrations/`
+- [ ] T010 [P] Expose `GET /api/items` Express handler with filter + pagination in `backend/src/api/items.ts`
+- [ ] T011 [P] Build TanStack Query hook and data helpers in `frontend/src/hooks/useItems.ts`
+- [ ] T012 Render filament grid + detail pane in `frontend/src/components/FilamentGrid.tsx`
+- [ ] T013 Wire ingestion job trigger (CLI or worker) documenting run metadata in `ingestion/src/runner.ts`
 
 ## Phase 3.4: Integration
-- [ ] T015 Connect UserService to DB
-- [ ] T016 Auth middleware
-- [ ] T017 Request/response logging
-- [ ] T018 CORS and security headers
+- [ ] T014 Configure structured logging + metrics exporters across ingestion/backend in `ingestion/src/logger.ts` and `backend/src/observability/`
+- [ ] T015 Ensure Docker compose health checks and readiness probes are defined in `docker/compose.yml`
+- [ ] T016 [P] Seed accessibility snapshots and keyboard navigation scripts in `frontend/tests/accessibility/`
+- [ ] T017 [P] Document operational quickstart in `docs/quickstart.md` aligning with constitution workflows
 
 ## Phase 3.5: Polish
-- [ ] T019 [P] Unit tests for validation in tests/unit/test_validation.py
-- [ ] T020 Performance tests (<200ms)
-- [ ] T021 [P] Update docs/api.md
-- [ ] T022 Remove duplication
-- [ ] T023 Run manual-testing.md
+- [ ] T018 [P] Add unit tests for query builders in `backend/tests/unit/queryBuilder.spec.ts`
+- [ ] T019 Validate large dataset performance locally and record findings in `docs/performance.md`
+- [ ] T020 [P] Update changelog / release notes capturing Docker images and migration IDs
+- [ ] T021 Run manual browsing script from `quickstart.md` and capture screenshots for reviewers
 
 ## Dependencies
-- Tests (T004-T007) before implementation (T008-T014)
-- T008 blocks T009, T015
-- T016 blocks T018
-- Implementation before polish (T019-T023)
+- Tests (T004-T007) before corresponding implementation (T008-T013)
+- T008 feeds T009 and T013
+- T010 depends on migrations (T009) and ingestion data (T008)
+- T012 depends on hooks (T011) and API readiness (T010)
+- Integration tasks (T014-T017) require core implementation complete
+- Polish (T018-T021) follows integration pass
 
 ## Parallel Example
 ```
-# Launch T004-T007 together:
-Task: "Contract test POST /api/users in tests/contract/test_users_post.py"
-Task: "Contract test GET /api/users/{id} in tests/contract/test_users_get.py"
-Task: "Integration test registration in tests/integration/test_registration.py"
-Task: "Integration test auth in tests/integration/test_auth.py"
+# Launch T006-T007 together while ingestion tests run:
+Task: "API contract test for GET /api/items in backend/tests/contract/items.get.spec.ts"
+Task: "React accessibility test for filament grid filtering in frontend/tests/components/FilamentGrid.spec.tsx"
 ```
 
 ## Notes
-- [P] tasks = different files, no dependencies
+- [P] tasks = different files/services, no shared state
 - Verify tests fail before implementing
-- Commit after each task
-- Avoid: vague tasks, same file conflicts
+- Commit after each task group (tests → implementation → polish)
+- Ensure Docker compose stays functional after each major task
 
 ## Task Generation Rules
 *Applied during main() execution*
 
 1. **From Contracts**:
-   - Each contract file → contract test task [P]
-   - Each endpoint → implementation task
-   
+   - Each API contract file → contract test + handler task
+   - Each ingestion contract → parser verification task
+
 2. **From Data Model**:
-   - Each entity → model creation task [P]
-   - Relationships → service layer tasks
-   
+   - Each entity → migration/model task
+   - Relationships → query/service tasks
+
 3. **From User Stories**:
-   - Each story → integration test [P]
-   - Quickstart scenarios → validation tasks
+   - Each browsing scenario → UI integration test task
+   - Accessibility requirements → a11y validation task
 
 4. **Ordering**:
-   - Setup → Tests → Models → Services → Endpoints → Polish
+   - Setup → Tests → Ingestion → API → UI → Observability/Polish
    - Dependencies block parallel execution
 
 ## Validation Checklist
 *GATE: Checked by main() before returning*
 
 - [ ] All contracts have corresponding tests
-- [ ] All entities have model tasks
-- [ ] All tests come before implementation
+- [ ] All entities have migration/model tasks
+- [ ] All tests precede implementation
+- [ ] UI tasks include accessibility coverage
 - [ ] Parallel tasks truly independent
 - [ ] Each task specifies exact file path
-- [ ] No task modifies same file as another [P] task
+- [ ] Docker/observability steps captured

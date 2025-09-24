@@ -10,7 +10,7 @@
 1. Parse user description from Input
    → If empty: ERROR "No feature description provided"
 2. Extract key concepts from description
-   → Identify: actors, actions, data, constraints
+   → Identify: actors, actions, data, constraints, SDE touchpoints
 3. For each unclear aspect:
    → Mark with [NEEDS CLARIFICATION: specific question]
 4. Fill User Scenarios & Testing section
@@ -28,9 +28,10 @@
 ---
 
 ## ⚡ Quick Guidelines
-- ✅ Focus on WHAT users need and WHY
+- ✅ Focus on WHAT users need and WHY, including which Eve SDE datasets they rely on
 - ❌ Avoid HOW to implement (no tech stack, APIs, code structure)
 - 👥 Written for business stakeholders, not developers
+- 📦 Document assumptions about data freshness, access roles, and compliance
 
 ### Section Requirements
 - **Mandatory sections**: Must be completed for every feature
@@ -45,6 +46,9 @@ When creating this spec from a user prompt:
 4. **Common underspecified areas**:
    - User types and permissions
    - Data retention/deletion policies  
+   - Eve SDE archive version or update cadence
+   - Postgres reporting requirements or downstream exports
+   - Accessibility expectations for filament UI interactions
    - Performance targets and scale
    - Error handling behaviors
    - Integration requirements

@@ -1,50 +1,62 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version: — → 1.0.0
+- Modified Principles: Data Fidelity First; Postgres As Source Of Truth; Responsive Filament UI; Spec Kit Operational Discipline; Observable & Containerized Delivery
+- Added Sections: Technology & Experience Guardrails; Workflow & Quality Gates
+- Removed Sections: None
+- Templates requiring updates:
+  - .specify/templates/plan-template.md: ✅ updated
+  - .specify/templates/spec-template.md: ✅ updated
+  - .specify/templates/tasks-template.md: ✅ updated
+- Follow-up TODOs: None
+-->
+
+# Eve Data Browser Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Data Fidelity First (NON-NEGOTIABLE)
+- Accept Eve SDE ZIP archives sourced from CCP's authoritative distribution only.
+- Treat every ingestion run as reproducible: checksum inputs, capture importer version, and persist run metadata.
+- Fail builds when schema validation emits warnings or missing mapping coverage. Migration notes and fixture updates accompany parser changes.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Postgres As Source Of Truth
+- Persist parsed data exclusively in Postgres with versioned migrations and repeatable seed scripts.
+- Interact with Postgres through typed data access helpers; no feature may rely on ad-hoc SQL in application layers.
+- Derived caches or search indexes must declare their Postgres dependency and invalidation strategy alongside code.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Responsive Filament UI
+- Ship the frontend with Vite + React + TypeScript and reuse EVEIndy's filament/node motif, typography, and palette (#0a0f1c base, neon cyan accents).
+- Provide keyboard-accessible filtering, sorting, and detail drill-down; WCAG AA contrast and focus management are mandatory.
+- Defer heavy dataset rendering to virtualized or chunked strategies so primary interactions stay responsive under production-sized data loads.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Spec Kit Operational Discipline
+- Execute every change through Plan → Spec → Tasks → Implement within this repository, committing artifacts before code merges.
+- Plans and specs must articulate ingestion, Postgres, and UI implications with acceptance criteria tied to this constitution.
+- No implementation merges without passing automated tests, updated documentation, and reviewer confirmation that constitutional gates are satisfied.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Observable & Containerized Delivery
+- Develop and run all services in Docker to keep environments reproducible across contributors and deployments.
+- Emit structured logs, health endpoints, and lightweight metrics for ingestion jobs, API services, and the frontend gateway.
+- Compose services (ingestion worker, API, Postgres, frontend) via `docker compose`; operational runbooks document startup, teardown, and rollback sequences.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Technology & Experience Guardrails
+- Ingestion jobs decompress Eve SDE ZIPs, parse YAML with a deterministic schema binder, and write audited snapshots to Postgres.
+- The API layer uses Node.js with Express (or a minimal equivalent) to expose read-only endpoints supporting pagination, filtering, and search.
+- The client is a Vite + React + TypeScript single-page app with reusable filament/node components, dark-mode first, responsive down to 768px viewports.
+- Styling uses Tailwind or CSS-in-JS while preserving EVEIndy's filament/node motif and color system.
+- State management relies on TanStack Query (or an equivalent) to synchronize server data; bespoke global stores require documented justification.
+- Docker images use multi-stage builds; `docker compose` orchestrates ingestion, API, Postgres, and frontend containers for local and production parity.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+## Workflow & Quality Gates
+- CI pipelines validate ingestion parsers with representative SDE fixtures, run database migrations, lint, type-check, and execute frontend tests.
+- Every merge updates relevant Spec Kit artifacts (plan/spec/tasks) and documentation when ingestion schemas or UI flows change.
+- Reviews confirm accessibility (keyboard navigation, contrast) and data accuracy (spot-check imported records) prior to approval.
+- Release procedures tag Docker images, apply database migrations, refresh seeds, and record rollback steps within the tasks template.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+- This constitution supersedes all prior Eve Data Browser process documents; amendments require a plan/spec pair that details impact, an updated Sync Impact Report, and reviewer approval.
+- Versioning follows semantic rules: MAJOR for breaking principle changes, MINOR for new principles or sections, PATCH for clarifications. Record justifications in the Sync Impact Report.
+- Compliance reviews block merges when principles, guardrails, or workflow gates are unmet; non-compliant work is reverted or prevented from deployment.
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
-
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2025-09-23 | **Last Amended**: 2025-09-23

@@ -1,4 +1,3 @@
-
 # Implementation Plan: [FEATURE]
 
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
@@ -9,24 +8,27 @@
 1. Load feature spec from Input path
    → If not found: ERROR "No feature spec at {path}"
 2. Fill Technical Context (scan for NEEDS CLARIFICATION)
-   → Detect Project Type from context (web=frontend+backend, mobile=app+api)
-   → Set Structure Decision based on project type
-3. Fill the Constitution Check section based on the content of the constitution document.
+   → Detect Eve Data Browser scope: ingestion, API, frontend
+   → Capture Eve SDE dataset touchpoints, Postgres implications, and frontend surface area
+3. Populate the Constitution Check section using Eve Data Browser constitution v1.0.0
+   → Map each principle to measurable gating questions
 4. Evaluate Constitution Check section below
-   → If violations exist: Document in Complexity Tracking
-   → If no justification possible: ERROR "Simplify approach first"
+   → If violations exist: Document in Complexity Tracking with mitigation
+   → If no justification possible: ERROR "Realign with constitution before proceeding"
    → Update Progress Tracking: Initial Constitution Check
 5. Execute Phase 0 → research.md
-   → If NEEDS CLARIFICATION remain: ERROR "Resolve unknowns"
-6. Execute Phase 1 → contracts, data-model.md, quickstart.md, agent-specific template file (e.g., `CLAUDE.md` for Claude Code, `.github/copilot-instructions.md` for GitHub Copilot, `GEMINI.md` for Gemini CLI, `QWEN.md` for Qwen Code or `AGENTS.md` for opencode).
+   → Resolve unknowns about SDE schema, dataset cadence, Postgres migrations, UI access patterns
+6. Execute Phase 1 → contracts, data-model.md, quickstart.md, agent-specific template file (e.g., `.specify/scripts/bash/update-agent-context.sh codex`)
+   → Ensure contracts cover ingestion jobs, API read endpoints, and UI interactions required to browse data
 7. Re-evaluate Constitution Check section
-   → If new violations: Refactor design, return to Phase 1
+   → If new violations: Refine design, return to Phase 1 deliverables
    → Update Progress Tracking: Post-Design Constitution Check
 8. Plan Phase 2 → Describe task generation approach (DO NOT create tasks.md)
+   → Highlight Docker touchpoints, observability hooks, and testing strategy for ingestion/API/UI
 9. STOP - Ready for /tasks command
 ```
 
-**IMPORTANT**: The /plan command STOPS at step 7. Phases 2-4 are executed by other commands:
+**IMPORTANT**: The /plan command STOPS at step 9. Phases 2-4 are executed by other commands:
 - Phase 2: /tasks command creates tasks.md
 - Phase 3-4: Implementation execution (manual or via tools)
 
@@ -34,20 +36,26 @@
 [Extract from feature spec: primary requirement + technical approach from research]
 
 ## Technical Context
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]  
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]  
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]  
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]  
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
-**Project Type**: [single/web/mobile - determines source structure]  
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]  
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Language/Version**: [e.g., Node.js 20, Python 3.12 for ingestion, React 18 or NEEDS CLARIFICATION]  
+**Primary Dependencies**: [e.g., Vite, Express, TanStack Query or NEEDS CLARIFICATION]  
+**Storage**: PostgreSQL (version?) or NEEDS CLARIFICATION  
+**Testing**: [e.g., Vitest, Jest, pytest, Supertest or NEEDS CLARIFICATION]  
+**Target Platform**: Dockerized web stack (frontend, API, ingestion) or NEEDS CLARIFICATION  
+**Project Type**: web (frontend + backend + ingestion worker)  
+**Performance Goals**: [e.g., dataset render <500ms, ingestion per archive <5 min or NEEDS CLARIFICATION]  
+**Constraints**: [e.g., read-only API, WCAG AA, memory ceilings or NEEDS CLARIFICATION]  
+**Scale/Scope**: [e.g., full SDE snapshot, concurrent viewers, ingestion frequency or NEEDS CLARIFICATION]
+**Ingestion Cadence**: [e.g., nightly, on-demand or NEEDS CLARIFICATION]  
+**Observability**: [logging/metrics expectations or NEEDS CLARIFICATION]
 
 ## Constitution Check
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- [ ] **Data Fidelity First**: Ingestion path validates SDE source, schemas, and checksum logging.
+- [ ] **Postgres As Source Of Truth**: Plan documents migrations, seeds, and typed data helpers without shadow stores.
+- [ ] **Responsive Filament UI**: UI scope covers filament/node styling, accessibility, and performance guardrails.
+- [ ] **Spec Kit Operational Discipline**: Plan references required Spec Kit artifacts, testing cadence, and reviewer gates.
+- [ ] **Observable & Containerized Delivery**: Docker story, structured logging, health endpoints, and metrics are accounted for.
 
 ## Project Structure
 
@@ -64,55 +72,44 @@ specs/[###-feature]/
 
 ### Source Code (repository root)
 ```
-# Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+ingestion/
+├── src/
+├── pipelines/
+└── tests/
 
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# Option 2: Web application (when "frontend" + "backend" detected)
 backend/
 ├── src/
-│   ├── models/
+│   ├── api/
 │   ├── services/
-│   └── api/
+│   └── db/
 └── tests/
 
 frontend/
 ├── src/
 │   ├── components/
 │   ├── pages/
-│   └── services/
+│   └── hooks/
 └── tests/
 
-# Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure]
+docker/
+├── Dockerfile.*
+└── compose.yml
 ```
 
-**Structure Decision**: [DEFAULT to Option 1 unless Technical Context indicates web/mobile app]
+**Structure Decision**: Default to the above stack unless Technical Context indicates a scoped subset (e.g., UI-only spike). Document deviations.
 
 ## Phase 0: Outline & Research
 1. **Extract unknowns from Technical Context** above:
-   - For each NEEDS CLARIFICATION → research task
-   - For each dependency → best practices task
-   - For each integration → patterns task
+   - For each NEEDS CLARIFICATION → research ingestion/API/UI specifics
+   - For each dependency → capture version support inside Docker
+   - For schema questions → document required SDE references
 
-2. **Generate and dispatch research agents**:
+2. **Generate and dispatch research tasks**:
    ```
    For each unknown in Technical Context:
-     Task: "Research {unknown} for {feature context}"
+     Task: "Research {unknown} for Eve Data Browser {feature}"
    For each technology choice:
-     Task: "Find best practices for {tech} in {domain}"
+     Task: "Summarize best practices for {tech} in Eve Data Browser context"
    ```
 
 3. **Consolidate findings** in `research.md` using format:
@@ -120,38 +117,31 @@ ios/ or android/
    - Rationale: [why chosen]
    - Alternatives considered: [what else evaluated]
 
-**Output**: research.md with all NEEDS CLARIFICATION resolved
+**Output**: research.md with all NEEDS CLARIFICATION resolved and constitution gates satisfied
 
 ## Phase 1: Design & Contracts
 *Prerequisites: research.md complete*
 
-1. **Extract entities from feature spec** → `data-model.md`:
-   - Entity name, fields, relationships
-   - Validation rules from requirements
-   - State transitions if applicable
+1. **Model data & ingestion artifacts** in `data-model.md`:
+   - Entities, fields, relationships, and provenance metadata
+   - Ingestion run states and error handling
 
-2. **Generate API contracts** from functional requirements:
-   - For each user action → endpoint
-   - Use standard REST/GraphQL patterns
-   - Output OpenAPI/GraphQL schema to `/contracts/`
+2. **Generate API contracts** for browsing features:
+   - For each user filter/search → endpoint + response schema
+   - Capture pagination, sorting, and Postgres-backed queries
 
 3. **Generate contract tests** from contracts:
-   - One test file per endpoint
-   - Assert request/response schemas
-   - Tests must fail (no implementation yet)
+   - One test file per endpoint or ingestion pipeline contract
+   - Tests must fail (no implementation yet) and assert Postgres fixtures
 
 4. **Extract test scenarios** from user stories:
-   - Each story → integration test scenario
-   - Quickstart test = story validation steps
+   - Browser interactions, accessibility checks, ingestion updates
+   - Quickstart test = end-to-end data visibility scenario
 
-5. **Update agent file incrementally** (O(1) operation):
+5. **Update agent context**:
    - Run `.specify/scripts/bash/update-agent-context.sh codex`
-     **IMPORTANT**: Execute it exactly as specified above. Do not add or remove any arguments.
-   - If exists: Add only NEW tech from current plan
-   - Preserve manual additions between markers
-   - Update recent changes (keep last 3)
+   - Add new technologies or decisions since last update
    - Keep under 150 lines for token efficiency
-   - Output to repository root
 
 **Output**: data-model.md, /contracts/*, failing tests, quickstart.md, agent-specific file
 
@@ -161,17 +151,15 @@ ios/ or android/
 **Task Generation Strategy**:
 - Load `.specify/templates/tasks-template.md` as base
 - Generate tasks from Phase 1 design docs (contracts, data model, quickstart)
-- Each contract → contract test task [P]
-- Each entity → model creation task [P] 
-- Each user story → integration test task
-- Implementation tasks to make tests pass
+- Ingestion pipelines → parser + migration tasks [P]
+- API endpoints → contract tests then Express handlers [P]
+- UI flows → component tests then implementation tasks
 
 **Ordering Strategy**:
-- TDD order: Tests before implementation 
-- Dependency order: Models before services before UI
-- Mark [P] for parallel execution (independent files)
+- Setup Docker + Postgres → Tests → Ingestion → API → UI → Observability
+- Mark [P] for independent files/services only
 
-**Estimated Output**: 25-30 numbered, ordered tasks in tasks.md
+**Estimated Output**: 30±5 numbered, ordered tasks in tasks.md covering ingestion, API, UI, and observability
 
 **IMPORTANT**: This phase is executed by the /tasks command, NOT by /plan
 
@@ -180,15 +168,15 @@ ios/ or android/
 
 **Phase 3**: Task execution (/tasks command creates tasks.md)  
 **Phase 4**: Implementation (execute tasks.md following constitutional principles)  
-**Phase 5**: Validation (run tests, execute quickstart.md, performance validation)
+**Phase 5**: Validation (run tests, execute quickstart.md, verify observability dashboards)
 
 ## Complexity Tracking
 *Fill ONLY if Constitution Check has violations that must be justified*
 
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+| [e.g., temporary CSV cache] | [current need] | [why Postgres replication insufficient] |
+| [e.g., UI virtualization library swap] | [specific problem] | [why existing filament components insufficient] |
 
 
 ## Progress Tracking
@@ -197,7 +185,7 @@ ios/ or android/
 **Phase Status**:
 - [ ] Phase 0: Research complete (/plan command)
 - [ ] Phase 1: Design complete (/plan command)
-- [ ] Phase 2: Task planning complete (/plan command - describe approach only)
+- [ ] Phase 2: Task planning approach defined (/plan command)
 - [ ] Phase 3: Tasks generated (/tasks command)
 - [ ] Phase 4: Implementation complete
 - [ ] Phase 5: Validation passed
@@ -209,4 +197,4 @@ ios/ or android/
 - [ ] Complexity deviations documented
 
 ---
-*Based on Constitution v2.1.1 - See `/memory/constitution.md`*
+*Based on Constitution v1.0.0 - See `/memory/constitution.md`*
