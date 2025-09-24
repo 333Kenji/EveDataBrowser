@@ -39,9 +39,20 @@ Establish authoritative references and design constraints for downloading, valid
 - **Rationale**: Enables monitors to warn when SDE stale; aligns with tasks plan for metrics dashboard stub.
 - **Alternatives considered**: Health checks without manifest awareness – rejected because stale data would go unnoticed.
 
+### 8. Market data providers & rate limits
+- **Decision**: Treat Adam4EVE as Phase-1 live provider with token-bucket limiter set to 30 requests/minute (default public limit) and jittered backoff on HTTP 429. Capture provider + window params in `.env` for ops tuning.
+- **Rationale**: Matches docs/data/market.md guidance and ensures snapshot jobs cannot saturate the public API; configuration lets ops lower limits if providers tighten policies.
+- **Alternatives considered**: Unlimited polling with manual monitoring – rejected due to risk of provider bans and constitution guardrails around rate-limit compliance.
+
+- **Decision**: Keep Fuzzwork adapter behind feature flag until cadence + schema confirmed; document outstanding questions for future phase.
+- **Rationale**: Avoids prematurely ingesting data with uncertain provenance while still planning for multi-provider support.
+- **Alternatives considered**: Launch both providers simultaneously – rejected because Fuzzwork update cadence is not yet verified.
+
 ## Open questions / follow-ups
 - **Nightly cadence trigger**: Decide between Cron in ingestion container versus external scheduler. *Pending product decision.*
 - **Redis usage**: Placeholder in `.env.example`; confirm if we need a cache for long-running queries before provisioning service.
+- **Fuzzwork rate limit & schema**: Confirm official limits, data freshness, and differential fields before enabling adapter; capture findings in market docs.
+- **Market backfill expectations**: Determine how far back initial Adam4EVE snapshot should fetch (e.g., 30 days vs 90) to balance storage with UI needs.
 
 ## References
 - CCP Static Data: https://developers.eveonline.com/static-data

@@ -42,12 +42,19 @@ Sync Impact Report
 
 ## Technology & Experience Guardrails
 - **Phase-1 scope**: Local SDE → Postgres → React browser for Ships and Blueprints only. Search by display name, not type ID. No job planning, profitability calculators, or ESI integrations in this repo.
+- Market data limited to The Forge (Jita) region using public Adam4EVE and Fuzzwork endpoints; rate limits respected and snapshots persisted to Postgres.
 - Ingestion watches `data/SDE/_downloads/` (case-insensitive) for the newest archive, verifies versions/checksums, skips unchanged imports, and logs every decision. Parsed data is limited to minimal CCP tables plus attribute mappings required for ship stats and blueprint activities.
-- The importer writes manifests (`sde_versions`) capturing version, checksum, and import timestamps; migrations expose `invTypes`, `invGroups`, `invCategories`, `invBlueprintTypes`, `industryActivity`, `industryActivityMaterials`, `industryActivityProducts`, and related attribute views needed for entity cards.
+- The importer writes manifests (`sde_versions`) capturing version, checksum, and import timestamps; migrations expose `invTypes`, `invGroups`, `invCategories`, `invBlueprintTypes`, `industryActivity`, `industryActivityMaterials`, `industryActivityProducts`, preset tables derived from the SDE (faction/race/group metadata), and related attribute views needed for entity cards.
 - The backend uses FastAPI to provide read-only endpoints (`/health`, `/search`, `/ships/{type_id}`, `/blueprints/{blueprint_type_id}`) with pagination, filters, and manifest-aware headers. Entity card JSON contracts for ships and blueprints MUST be produced and versioned before or alongside endpoint changes so the frontend can develop against a stable schema.
-- The React + Vite client ships with a sidebar (Ships / Blueprints), filament background, reusable card templates, search box, results list, detail pane, and filters (race/faction, group, product category, activity presence). Styling can leverage Tailwind or CSS-in-JS while preserving accessibility guarantees.
+- The React + Vite client ships with a sidebar (Ships / Blueprints), filament background, reusable card templates, search box, results list, and detail panes. Front-end vision includes:
+  - Right-side market browser panel with unified search; selecting an item renders a type-specific card.
+  - Ship card presented as modern, multi-tab layout (Stats, Fitting/Slots, Description, Attributes) with lightweight 3D viewer (progressive enhancement) and reduced-motion fallback delivering subtle factory ambiance.
+  - Blueprint card split between calculator (materials, activity buttons for Manufacturing/Research/Invention) and market stats panel.
+  - Animated filaments/nodes background providing depth/parallax without blocking interactions. See `specify.md` for component-level details.
 - State management relies on TanStack Query (or an equivalent) to synchronize server data; bespoke global stores require documented justification.
 - Docker images rely on multi-stage builds; `docker compose` orchestrates ingestion (CLI + watcher), FastAPI backend, Postgres, and frontend containers with a shared `data-sde` named volume.
+- Market data management scope (Phase-1): integrate provider adapters (Adam4EVE first, Fuzzwork later), honour rate limits via shared limiter, capture snapshots/incremental updates in Postgres, and expose `/market/:type_id` API for UI charts. Detailed schema and cadence live in `specify.md`.
+- Phase-1 non-goals: no ESI job planner, profitability calculators, or advanced simulations. 3D viewer remains optional behind feature flag with graceful fallback imagery.
 
 ## Workflow & Quality Gates
 - CI pipelines validate ingestion parsers with representative SDE fixtures, assert manifest diffs, run database migrations, lint, format, execute backend unit tests, and run frontend/UI accessibility tests.
