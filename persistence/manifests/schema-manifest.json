@@ -1,0 +1,155 @@
+{
+  "schemaHash": "e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac",
+  "generatedAt": "2025-10-13T00:45:00Z",
+  "tables": [
+    {
+      "entity": "SdeCategories",
+      "tableName": "sde_categories",
+      "schema": "sde_master",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/categories",
+      "columns": [
+        { "name": "key", "sqlType": "BIGINT", "nullable": false, "primaryKey": true },
+        { "name": "category_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false },
+  { "name": "name", "sqlType": "JSONB", "nullable": false, "primaryKey": false },
+  { "name": "published", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+  { "name": "icon_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "SdeGroups",
+      "tableName": "sde_groups",
+      "schema": "sde_master",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/groups",
+      "columns": [
+        { "name": "key", "sqlType": "BIGINT", "nullable": false, "primaryKey": true },
+  { "name": "group_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false },
+  { "name": "category_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false },
+  { "name": "name", "sqlType": "JSONB", "nullable": false, "primaryKey": false },
+  { "name": "published", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+  { "name": "anchorable", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+  { "name": "anchored", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+  { "name": "fittable_non_singleton", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+  { "name": "use_base_price", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+  { "name": "icon_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "SdeMarketGroups",
+      "tableName": "sde_market_groups",
+      "schema": "sde_master",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/marketGroups",
+      "columns": [
+        { "name": "key", "sqlType": "BIGINT", "nullable": false, "primaryKey": true },
+        { "name": "market_group_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false },
+    { "name": "name", "sqlType": "JSONB", "nullable": false, "primaryKey": false },
+    { "name": "description", "sqlType": "TEXT", "nullable": true, "primaryKey": false },
+  { "name": "parent_group_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false },
+  { "name": "has_types", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+  { "name": "icon_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "SdeMetaGroups",
+      "tableName": "sde_meta_groups",
+      "schema": "sde_master",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/metaGroups",
+      "columns": [
+        { "name": "key", "sqlType": "BIGINT", "nullable": false, "primaryKey": true },
+    { "name": "name", "sqlType": "JSONB", "nullable": false, "primaryKey": false },
+    { "name": "description", "sqlType": "JSONB", "nullable": true, "primaryKey": false },
+  { "name": "color", "sqlType": "JSONB", "nullable": true, "primaryKey": false },
+  { "name": "icon_suffix", "sqlType": "TEXT", "nullable": true, "primaryKey": false },
+  { "name": "icon_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "SdeTypes",
+      "tableName": "sde_types",
+      "schema": "sde_master",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/types",
+      "columns": [
+        { "name": "key", "sqlType": "BIGINT", "nullable": false, "primaryKey": true },
+        { "name": "type_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false },
+  { "name": "group_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+  { "name": "name", "sqlType": "JSONB", "nullable": false, "primaryKey": false },
+  { "name": "description", "sqlType": "TEXT", "nullable": true, "primaryKey": false },
+        { "name": "published", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+        { "name": "portion_size", "sqlType": "INTEGER", "nullable": false, "primaryKey": false },
+  { "name": "base_price", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "volume", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "mass", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "race_id", "sqlType": "INTEGER", "nullable": true, "primaryKey": false },
+  { "name": "faction_id", "sqlType": "INTEGER", "nullable": true, "primaryKey": false },
+  { "name": "market_group_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false },
+  { "name": "meta_group_id", "sqlType": "BIGINT", "nullable": true, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "MarketPriceHistory",
+      "tableName": "market_price_history",
+      "schema": "public",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/marketPriceHistory",
+      "columns": [
+        { "name": "type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "region_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "ts_bucket_start", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false },
+  { "name": "average_price", "sqlType": "DOUBLE PRECISION", "nullable": false, "primaryKey": false },
+  { "name": "high_price", "sqlType": "DOUBLE PRECISION", "nullable": false, "primaryKey": false },
+  { "name": "low_price", "sqlType": "DOUBLE PRECISION", "nullable": false, "primaryKey": false },
+  { "name": "median_price", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+  { "name": "volume", "sqlType": "DOUBLE PRECISION", "nullable": false, "primaryKey": false },
+  { "name": "order_count", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "source", "sqlType": "TEXT", "nullable": false, "primaryKey": false },
+        { "name": "last_ingested_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "MarketLatestStats",
+      "tableName": "market_latest_stats",
+      "schema": "public",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/marketLatestStats",
+      "columns": [
+        { "name": "type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "region_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "last_seen_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false },
+  { "name": "snapshot_low", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+  { "name": "snapshot_high", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+  { "name": "snapshot_median", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+  { "name": "snapshot_volume", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "source", "sqlType": "TEXT", "nullable": false, "primaryKey": false },
+        { "name": "updated_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "ManufacturingProduct",
+      "tableName": "sde_master_products",
+      "schema": "sde_master",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/products",
+      "columns": [
+        { "name": "product_type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": true },
+        { "name": "blueprint_type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "activity", "sqlType": "TEXT", "nullable": false, "primaryKey": false },
+        { "name": "product_quantity", "sqlType": "INTEGER", "nullable": false, "primaryKey": false },
+        { "name": "manufacturing_time", "sqlType": "INTEGER", "nullable": false, "primaryKey": false },
+        { "name": "max_production_limit", "sqlType": "INTEGER", "nullable": true, "primaryKey": false },
+        { "name": "created_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false },
+        { "name": "updated_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "ManufacturingMaterial",
+      "tableName": "sde_master_materials",
+      "schema": "sde_master",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/materials",
+      "columns": [
+        { "name": "material_type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "product_type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "blueprint_type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "activity", "sqlType": "TEXT", "nullable": false, "primaryKey": false },
+        { "name": "material_quantity", "sqlType": "INTEGER", "nullable": false, "primaryKey": false },
+        { "name": "created_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false },
+        { "name": "updated_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,282 @@
+.accordionNav {
+  display: block;
+  font-size: 0.82rem;
+  line-height: 1.18;
+  padding: 10px 8px 18px 10px;
+  /* Allow the outer sidebar to own scrolling; remove internal scroll to eliminate nested scrollbar. */
+  background: linear-gradient(180deg, #121b25 0%, #0c141c 46%, #070b10 100%);
+  border-right: 1px solid rgba(35, 56, 78, 0.72);
+  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.55);
+  color: rgba(206, 220, 235, 0.78);
+}
+
+.categoryList,
+.groupList,
+.typeList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 3px;
+  position: relative;
+}
+
+.category,
+.group {
+  position: relative;
+}
+
+.categoryButton,
+.groupButton,
+.typeButton {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  padding: 6px 10px 6px 28px;
+  font: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.1;
+  color: rgba(198, 216, 236, 0.72);
+  letter-spacing: 0.2px;
+  transition: background 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+
+.categoryButton {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+}
+
+.groupButton {
+  font-weight: 500;
+  padding-left: 32px;
+  font-size: 0.74rem;
+}
+
+.typeButton {
+  font-weight: 400;
+  padding-left: 24px;
+  font-size: 0.76rem;
+}
+
+.emptyMessage {
+  margin: 12px 6px 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(24, 36, 52, 0.45);
+  border: 1px solid rgba(62, 92, 128, 0.35);
+  color: rgba(202, 216, 236, 0.72);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.categoryButton:hover,
+.groupButton:hover,
+.typeButton:hover,
+.categoryButton:focus-visible,
+.groupButton:focus-visible,
+.typeButton:focus-visible {
+  background: rgba(58, 90, 130, 0.25);
+  color: rgba(228, 240, 255, 0.88);
+  outline: none;
+  box-shadow: 0 0 0 1px rgba(80, 132, 182, 0.35) inset;
+}
+
+.category[data-open] > .categoryButton,
+.group[data-open] > .groupButton {
+  background: rgba(54, 76, 108, 0.25);
+  color: rgba(222, 236, 255, 0.92);
+  box-shadow: 0 0 0 1px rgba(90, 140, 195, 0.25) inset;
+}
+
+.typeButton[data-active] {
+  color: rgba(244, 248, 255, 0.95);
+  background: linear-gradient(90deg, rgba(50, 130, 200, 0.35), rgba(20, 180, 160, 0.18));
+  box-shadow: 0 0 0 1px rgba(82, 160, 220, 0.45) inset, 0 0 0 1px rgba(24, 92, 140, 0.35);
+}
+
+.typeButton[data-active]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, rgba(90, 190, 255, 0.95), rgba(70, 210, 170, 0.6));
+  box-shadow: 0 0 8px rgba(80, 185, 255, 0.6);
+}
+
+.caret {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(134, 178, 220, 0.85);
+  font-size: 0.65rem;
+  transition: transform 140ms ease;
+}
+
+.category[data-open] > .categoryButton .caret,
+.group[data-open] > .groupButton .caret {
+  transform: translateY(-50%) rotate(90deg);
+}
+
+.icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  color: #9cc6ff;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 3px rgba(80, 140, 200, 0.35));
+  flex-shrink: 0;
+}
+
+.factionIcon {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  border-radius: 4px;
+  filter: drop-shadow(0 0 4px rgba(24, 36, 52, 0.8));
+}
+
+.label {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
+}
+
+.groupList,
+.typeList {
+  padding-left: 14px;
+}
+
+.groupList::before,
+.typeList::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 6px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(72, 104, 140, 0.32), rgba(72, 104, 140, 0));
+  pointer-events: none;
+}
+
+.typeList li {
+  position: relative;
+}
+
+.typeList li::before {
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 14px;
+  width: 12px;
+  height: 1px;
+  background: rgba(70, 100, 135, 0.32);
+}
+
+.typeAffordance {
+  width: 16px;
+  height: 16px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  background: rgba(16, 28, 42, 0.6);
+  box-shadow: 0 0 0 1px rgba(40, 68, 96, 0.45);
+}
+
+.typeBullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(130, 160, 200, 0.4);
+  box-shadow: 0 0 0 1px rgba(95, 132, 178, 0.55);
+}
+
+.typeButton[data-active] .typeBullet {
+  background: rgba(120, 220, 255, 0.9);
+  box-shadow: 0 0 6px rgba(80, 180, 255, 0.85);
+}
+
+.typeIconImage {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 4px rgba(10, 18, 26, 0.8));
+  background: rgba(8, 16, 24, 0.9);
+}
+
+.typeButton[data-active] .typeIconImage {
+  box-shadow: 0 0 0 1px rgba(82, 160, 220, 0.65), 0 0 6px rgba(80, 180, 255, 0.75);
+}
+
+.typeLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Removed custom scrollbar styling since internal scroll removed. */
+
+.skeletonList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.categorySkeleton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 6px 26px;
+  border-radius: 6px;
+  background: rgba(28, 40, 58, 0.4);
+  box-shadow: inset 0 0 0 1px rgba(34, 52, 74, 0.35);
+  min-height: 28px;
+}
+
+.skeletonCaret {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: rgba(82, 112, 148, 0.55);
+  display: inline-block;
+}
+
+.skeletonBlock {
+  height: 12px;
+  width: 70%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(120, 152, 190, 0.55), rgba(80, 110, 150, 0.35));
+  animation: accordionSkeletonPulse 1.2s ease-in-out infinite;
+}
+
+@keyframes accordionSkeletonPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}

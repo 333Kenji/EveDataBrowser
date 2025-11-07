@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EVE Data Browser</title>
+    <style>
+      html, body { height:100%; margin:0; padding:0; }
+      /* Re-enable scrolling if content exceeds viewport; chart itself is height constrained */
+      body { overflow-y:auto; overflow-x:hidden; }
+      #root { min-height:100%; display:flex; flex-direction:column; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

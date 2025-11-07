@@ -1,0 +1,1 @@
+export const MARKET_HISTORY_DEFAULT_LIMIT = 90;

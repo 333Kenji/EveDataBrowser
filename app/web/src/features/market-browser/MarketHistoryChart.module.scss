@@ -1,0 +1,126 @@
+$legend-gap-x: 0.65rem;
+$legend-gap-y: 0.35rem;
+
+/* Lean variant: minimize chrome so container width visually matches available space */
+.chartPanel {
+  --chart-bg-top: #161f28;
+  --chart-bg-bottom: #0c131b;
+  --chart-border: #1e2a37;
+  --grid-line: rgba(110, 136, 166, 0.22);
+  --grid-line-strong: rgba(148, 175, 205, 0.4);
+  --grid-vertical: rgba(90, 135, 185, 0.32);
+  --tick-color: rgba(214, 228, 248, 0.8);
+  --tick-strong: rgba(238, 245, 255, 0.95);
+  --tick-label-color: rgba(233, 242, 255, 0.92);
+  --tick-label-outline: rgba(12, 18, 24, 0.92);
+  --median-line: rgba(245, 175, 74, 0.9);
+  --median-point: #f2a545;
+  --median-point-stroke: rgba(19, 12, 4, 0.85);
+  --buy-line: #46c281;
+  --sell-line: #e3785d;
+  --sma5-line: #5fbfd7;
+  --sma20-line: #d19a4e;
+  --minmax-fill: rgba(120, 138, 168, 0.5);
+  --minmax-stroke: rgba(180, 196, 220, 0.6);
+  --donchian-fill: rgba(82, 124, 185, 0.22);
+  --donchian-border: rgba(120, 175, 240, 0.45);
+  --volume-bar: #2f6fa1;
+  --snapshot-buy: #32c979;
+  --snapshot-sell: #f05d4a;
+  --snapshot-p5-buy: #1fa36b;
+  --snapshot-p5-sell: #cb4363;
+  --hover-fill: rgba(255, 255, 255, 0.06);
+  --hover-line: rgba(235, 245, 255, 0.26);
+  --hover-point: #68adff;
+  --legend-fg: rgba(214, 226, 239, 0.78);
+  --tooltip-bg: rgba(14, 21, 30, 0.94);
+  --tooltip-border: rgba(120, 150, 184, 0.3);
+  --tooltip-shadow: 0 12px 22px rgba(0, 0, 0, 0.55);
+
+  display: grid;
+  grid-template-rows: max-content max-content 1fr;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 8px 10px 14px;
+  background: linear-gradient(180deg, var(--chart-bg-top) 0%, var(--chart-bg-bottom) 100%);
+  border: 1px solid var(--chart-border);
+  border-radius: 8px;
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(6, 10, 14, 0.7) inset;
+}
+
+.chartBody {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+
+  .chartSvg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.legend {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: $legend-gap-y $legend-gap-x;
+  font-size: 0.64rem;
+  color: var(--legend-fg);
+  position: relative;
+  z-index: 1;
+
+  button {
+    background: transparent;
+
+    &:hover {
+      filter: brightness(1.15);
+    }
+  }
+}
+
+.tooltip {
+  font-size: 0.66rem;
+  margin-top: 6px;
+  line-height: 1.35;
+  background: var(--tooltip-bg);
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--tooltip-border);
+  box-shadow: var(--tooltip-shadow);
+  color: rgba(224, 236, 248, 0.9);
+  min-width: 160px;
+
+  strong {
+    display: block;
+    font-size: 0.7rem;
+    margin-bottom: 2px;
+    color: #f5d592;
+  }
+}
+
+/* Floating tooltip variant (cursor-follow) */
+.tooltipFloating {
+  font-size: 0.66rem;
+  line-height: 1.35;
+  background: var(--tooltip-bg, rgba(14, 21, 30, 0.9));
+  padding: 6px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--tooltip-border);
+  box-shadow: var(--tooltip-shadow);
+  color: rgba(224, 236, 248, 0.9);
+  min-width: 160px;
+  position: absolute;
+  transform: none;
+  z-index: 5;
+  backdrop-filter: blur(4px) saturate(140%);
+}

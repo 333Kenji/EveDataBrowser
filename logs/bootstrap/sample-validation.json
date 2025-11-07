@@ -1,0 +1,52 @@
+{
+  "run_id": "11111111-2222-3333-4444-555555555555",
+  "timestamp": "2025-10-14T16:30:00Z",
+  "duration_ms": 31250,
+  "containers": [
+    {
+      "name": "api",
+      "state": "running",
+      "ports": ["3000->3000/tcp"],
+      "health_output": "ready - http 200"
+    },
+    {
+      "name": "web",
+      "state": "running",
+      "ports": ["5173->5173/tcp"],
+      "health_output": "listening"
+    },
+    {
+      "name": "db",
+      "state": "running",
+      "ports": [],
+      "health_output": "accepting connections"
+    }
+  ],
+  "endpoints": [
+    {
+      "url": "http://localhost:3000/v1/health",
+      "status_code": 200,
+      "latency_ms": 42,
+      "payload_digest": "status=ok"
+    },
+    {
+      "url": "http://localhost:3000/v1/internal/metrics",
+      "status_code": 200,
+      "latency_ms": 57,
+      "payload_digest": "checks.postgres.status=ok"
+    }
+  ],
+  "prerequisites": [
+    {
+      "name": "Docker Engine",
+      "status": "ok"
+    },
+    {
+      "name": "Node.js",
+      "status": "ok"
+    }
+  ],
+  "summary": "All containers healthy; endpoints returned 200",
+  "remediation_actions": [],
+  "ok": true
+}

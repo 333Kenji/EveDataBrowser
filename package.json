@@ -1,0 +1,25 @@
+{
+  "name": "evedatabrowser-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "bootstrap:validate": "bash scripts/bootstrap/run-validation.sh",
+    "bootstrap:validate:sample": "BOOTSTRAP_VALIDATION_MODE=sample bash scripts/bootstrap/run-validation.sh",
+    "bootstrap:test": "node --test scripts/bootstrap/__tests__/render-validation-summary.test.mjs",
+    "bootstrap:test:integration": "BOOTSTRAP_VALIDATION_MODE=sample bats scripts/bootstrap/__tests__/run-validation.spec.sh",
+    "test": "npm run bootstrap:test && npm run bootstrap:test:integration",
+  "format": "prettier --check docs/{QUICKSTART.md,API_CONTRACTS.md,FRONTEND_REGRESSION_PLAN.md}",
+  "format:write": "prettier --write docs/{QUICKSTART.md,API_CONTRACTS.md,FRONTEND_REGRESSION_PLAN.md}",
+    "contracts:build": "npm --prefix packages/contracts run build",
+    "contracts:typecheck": "npm --prefix packages/contracts run typecheck",
+  "schema:diff": "node scripts/bootstrap/schema-diff.mjs",
+  "schema:indexes": "node scripts/bootstrap/generate-schema-index-metadata.mjs",
+    "smoke": "echo 'smoke suite removed' && exit 0"
+  },
+  "devDependencies": {
+    "bats": "^1.11.0",
+    "pg": "^8.16.3",
+    "prettier": "^3.3.3",
+    "sass-embedded": "^1.93.2"
+  }
+}

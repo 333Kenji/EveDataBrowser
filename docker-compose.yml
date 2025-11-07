@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-eveapp}
+      POSTGRES_USER: ${DB_USER:-eveapp}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-eveapp}
+    # Host port mapping removed (Lean Mode): restrict Postgres to internal Docker network only.
+  # Access via: docker exec -it evedatabrowser-db psql -U eveapp -d eveapp
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-eveapp}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: node:20-bullseye
+    restart: unless-stopped
+    working_dir: /workspace/app/api
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: ${DATABASE_URL:-postgres://eveapp:eveapp@db:5432/eveapp}
+      PORT: 3000
+      HOST: 0.0.0.0
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./:/workspace
+    ports:
+      # Expose API on host port (default 3400) while the service listens on 3000 in-container.
+      - "${HOST_API_PORT:-3400}:3000"
+    command: sh -c "npm install && npm run dev"
+
+  web:
+    build:
+      context: ./app/web
+      target: dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      # Keep Vite dev server bound to 5173 inside the container
+      WEB_PORT: 5173
+      # Browser executes fetches; it resolves localhost -> host machine which is port-mapped to API container.
+      # Keep localhost (not internal service hostname) so compiled frontend works outside Docker too.
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3400}
+      VITE_PROXY_API: ${VITE_PROXY_API:-http://api:3000}
+    volumes:
+      - ./app/web:/app
+      - ./packages/contracts:/packages/contracts
+      - ./persistence:/persistence
+      - ./:/workspace
+    ports:
+      # Map host port (default 5600) to Vite's in-container 5173
+      - "${HOST_WEB_PORT:-5600}:5173"
+    command: sh -c "npm install && npm --prefix /packages/contracts run generate --silent && npm run dev -- --host 0.0.0.0 --port 5173"
+
+volumes:
+  db-data:

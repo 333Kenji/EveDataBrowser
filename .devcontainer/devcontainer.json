@@ -1,0 +1,30 @@
+{
+  "name": "EVEDataBrowser Dev",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "api",
+  "workspaceFolder": "/workspace",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.formatOnSave": true,
+        "files.eol": "\n",
+        "typescript.tsdk": "/workspace/app/web/node_modules/typescript/lib"
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "streetsidesoftware.code-spell-checker"
+      ]
+    }
+  },
+  // Forward remapped host ports for API (3400) and Web (5600)
+  "forwardPorts": [3400, 5600],
+  "postCreateCommand": "npm install --prefix app/api && npm install --prefix app/web"
+}

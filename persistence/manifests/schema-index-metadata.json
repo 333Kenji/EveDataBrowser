@@ -1,0 +1,101 @@
+{
+  "generatedAt": "2025-10-15T20:39:27.622Z",
+  "indexes": [
+    {
+      "schema": "sde_master",
+      "table": "master_products",
+      "name": "master_products_blueprint_type_idx",
+      "method": "btree",
+      "source": "scripts/bootstrap/materialize-master-tables.sql",
+      "columns": [
+        "blueprint_type_id"
+      ],
+      "predicate": "blueprint_type_id IS NOT NULL"
+    },
+    {
+      "schema": "sde_master",
+      "table": "master_products",
+      "name": "master_products_category_idx",
+      "method": "btree",
+      "source": "scripts/bootstrap/materialize-master-tables.sql",
+      "columns": [
+        "product_category_id"
+      ]
+    },
+    {
+      "schema": "sde_master",
+      "table": "master_products",
+      "name": "master_products_meta_group_idx",
+      "method": "btree",
+      "source": "scripts/bootstrap/materialize-master-tables.sql",
+      "columns": [
+        "product_meta_group_id"
+      ],
+      "predicate": "product_meta_group_id IS NOT NULL"
+    },
+    {
+      "schema": "sde_master",
+      "table": "master_products",
+      "name": "master_products_product_name_lower_idx",
+      "method": "btree",
+      "source": "scripts/bootstrap/materialize-master-tables.sql",
+      "expressions": [
+        "LOWER(product_name)"
+      ]
+    },
+    {
+      "schema": "sde_master",
+      "table": "master_materials",
+      "name": "master_materials_material_idx",
+      "method": "btree",
+      "source": "scripts/bootstrap/materialize-master-tables.sql",
+      "columns": [
+        "material_type_id"
+      ]
+    },
+    {
+      "schema": "sde_master",
+      "table": "master_materials",
+      "name": "master_materials_product_idx",
+      "method": "btree",
+      "source": "scripts/bootstrap/materialize-master-tables.sql",
+      "columns": [
+        "product_type_id"
+      ]
+    },
+    {
+      "schema": "sde_master",
+      "table": "master_materials",
+      "name": "master_materials_material_name_idx",
+      "method": "btree",
+      "source": "scripts/bootstrap/materialize-master-tables.sql",
+      "columns": [
+        "material_name"
+      ]
+    },
+    {
+      "schema": "public",
+      "table": "market_price_history",
+      "name": "market_price_history_type_region_bucket_key",
+      "method": "btree",
+      "source": "persistence/migrations/20251015_add_market_history_unique_indexes.sql",
+      "columns": [
+        "type_id",
+        "region_id",
+        "ts_bucket_start"
+      ]
+    },
+    {
+      "schema": "public",
+      "table": "market_latest_stats",
+      "name": "market_latest_stats_type_region_key",
+      "method": "btree",
+      "source": "persistence/migrations/20251015_add_market_history_unique_indexes.sql",
+      "columns": [
+        "type_id",
+        "region_id"
+      ]
+    }
+  ],
+  "pending": []
+}

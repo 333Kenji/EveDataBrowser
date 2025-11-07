@@ -1,0 +1,26 @@
+FROM node:20-bullseye-slim AS base
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+
+
+FROM base AS build
+WORKDIR /app
+COPY . .
+RUN npm run build
+
+FROM node:20-bullseye-slim AS dev
+WORKDIR /app
+COPY --from=base /app/node_modules ./node_modules
+COPY package*.json ./
+RUN apt-get update \
+	&& npx playwright install-deps \
+	&& rm -rf /var/lib/apt/lists/*
+COPY . .
+EXPOSE 5173
+CMD ["npm", "run", "dev"]
+
+FROM nginx:1.27-alpine AS prod
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
