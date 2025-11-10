@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { buildApiUrl, resolveApiBases } from './api-base';
 import { slugify } from '../utils/slugify';
 
-const DEFAULT_SEARCH_LIMIT = 100;
+const DEFAULT_SEARCH_LIMIT = 20000;
 const MAX_BROWSE_PAGES = 400;
 const UNCATEGORIZED_NAME = 'Uncategorized';
 const UNCATEGORIZED_CATEGORY_ID = 'market-category-uncategorized';
@@ -219,7 +219,7 @@ function buildThumbnail(typeId: number): string {
 }
 
 function filterItems(items: ApiItem[]): ApiItem[] {
-  return items.filter((item) => item.published && item.isBlueprintManufactured);
+  return items.filter((item) => item.published && item.marketGroupKey !== null);
 }
 
 export function buildTaxonomyCategories(items: ApiItem[]): TaxonomyCategory[] {

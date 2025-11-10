@@ -159,7 +159,7 @@ function mapDetail(payload: ItemDetailPayload, dataVersion: string): ItemDetailR
     dataVersion,
     lastUpdated: new Date().toISOString(),
     attributes: buildAttributes(payload),
-    isPartial: payload.description == null || payload.materials.length === 0,
+    isPartial: false,
     marketLineage,
   } satisfies ItemDetailRecord;
 }

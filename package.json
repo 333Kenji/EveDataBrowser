@@ -8,18 +8,23 @@
     "bootstrap:test": "node --test scripts/bootstrap/__tests__/render-validation-summary.test.mjs",
     "bootstrap:test:integration": "BOOTSTRAP_VALIDATION_MODE=sample bats scripts/bootstrap/__tests__/run-validation.spec.sh",
     "test": "npm run bootstrap:test && npm run bootstrap:test:integration",
-  "format": "prettier --check docs/{QUICKSTART.md,API_CONTRACTS.md,FRONTEND_REGRESSION_PLAN.md}",
-  "format:write": "prettier --write docs/{QUICKSTART.md,API_CONTRACTS.md,FRONTEND_REGRESSION_PLAN.md}",
+    "format": "prettier --check docs/{QUICKSTART.md,API_CONTRACTS.md,FRONTEND_REGRESSION_PLAN.md}",
+    "format:write": "prettier --write docs/{QUICKSTART.md,API_CONTRACTS.md,FRONTEND_REGRESSION_PLAN.md}",
     "contracts:build": "npm --prefix packages/contracts run build",
     "contracts:typecheck": "npm --prefix packages/contracts run typecheck",
-  "schema:diff": "node scripts/bootstrap/schema-diff.mjs",
-  "schema:indexes": "node scripts/bootstrap/generate-schema-index-metadata.mjs",
+    "schema:diff": "node scripts/bootstrap/schema-diff.mjs",
+    "schema:indexes": "node scripts/bootstrap/generate-schema-index-metadata.mjs",
+    "market:eligible:refresh": "node scripts/ingest/refresh-market-eligible-types.mjs",
+    "market:qa": "node scripts/ingest/run-market-qa.mjs",
+    "sde:import": "node scripts/ingest/check-sde-latest.mjs",
     "smoke": "echo 'smoke suite removed' && exit 0"
   },
   "devDependencies": {
     "bats": "^1.11.0",
     "pg": "^8.16.3",
     "prettier": "^3.3.3",
-    "sass-embedded": "^1.93.2"
+    "sass-embedded": "^1.93.2",
+    "unzipper": "^0.11.4",
+    "yaml": "^2.6.0"
   }
 }

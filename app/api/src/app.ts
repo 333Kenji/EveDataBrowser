@@ -1,3 +1,6 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import { MARKET_HISTORY_DEFAULT_LIMIT } from "@evedatabrowser/contracts";
@@ -7,6 +10,8 @@ import postgresPlugin from "./plugins/postgres.js";
 import { searchTaxonomy } from "./data/taxonomy.js";
 import { getItemDetail } from "./data/items.js";
 import { getMarketHistory, getMarketLatestStats } from "./data/market.js";
+import { getStructureOrders } from "./data/structure-orders.js";
+import type { CacheEnvelope } from "./data/shared.js";
 
 interface TaxonomySearchQuery {
   q?: string;
@@ -38,6 +43,11 @@ interface MarketLatestQuerystring {
   refresh?: string;
 }
 
+interface StructureOrdersQuerystring {
+  refresh?: string;
+  typeId?: string;
+}
+
 const DEFAULT_MARKET_REGION_ID = 10000002;
 const DEFAULT_HISTORY_LIMIT = MARKET_HISTORY_DEFAULT_LIMIT;
 const MAX_HISTORY_LIMIT = MARKET_HISTORY_DEFAULT_LIMIT;
@@ -48,6 +58,9 @@ const MANIFEST_SCHEMA_HASH = typeof schemaManifest?.schemaHash === "string"
 const MANIFEST_SCHEMA_GENERATED_AT = typeof schemaManifest?.generatedAt === "string"
   ? schemaManifest.generatedAt
   : new Date(0).toISOString();
+const APP_DIR = fileURLToPath(new URL(".", import.meta.url));
+const HISTORY_METRICS_PATH = resolve(APP_DIR, "../../../logs/ingestion/history-metrics.json");
+const QA_REPORT_PATH = resolve(APP_DIR, "../../../logs/ingestion/qa/latest.json");
 
 function parseCsvNumbers(value?: string): number[] {
   if (!value) {
@@ -104,6 +117,24 @@ function formatCacheHeader(cache: { maxAge: number; staleWhileRevalidate: number
 function applyCacheHeaders(reply: FastifyReply, cacheControl: string, generatedAt: Date): void {
   reply.header("Cache-Control", cacheControl);
   reply.header("Date", generatedAt.toUTCString());
+}
+
+function serializeCacheEnvelope(cache: CacheEnvelope) {
+  return {
+    scope: cache.scope,
+    maxAgeSeconds: cache.maxAgeSeconds,
+    staleWhileRevalidateSeconds: cache.staleWhileRevalidateSeconds,
+    generatedAt: cache.generatedAt.toISOString(),
+  };
+}
+
+async function readHistoryMetricsSummary(): Promise<Record<string, unknown> | null> {
+  try {
+    const raw = await readFile(HISTORY_METRICS_PATH, { encoding: "utf8" });
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
 }
 
 export function createApp(): FastifyInstance {
@@ -169,6 +200,8 @@ export function createApp(): FastifyInstance {
       };
     }
 
+    const historyMetrics = await readHistoryMetricsSummary();
+
     applyCacheHeaders(reply, "public, max-age=5", generatedAt);
 
     return {
@@ -187,10 +220,63 @@ export function createApp(): FastifyInstance {
             items: config.cache.items,
             market: config.cache.market
           }
-        }
+        },
+        marketIngestion: historyMetrics
       }
     };
   });
+
+  app.get("/v1/internal/market-qa", async (_request, reply) => {
+    try {
+      const raw = await readFile(QA_REPORT_PATH, { encoding: "utf8" });
+      const report = JSON.parse(raw) as {
+        generatedAt: string;
+        lookbackDays: number;
+        missingDays?: Array<{ type_id?: number; typeId?: number; region_id?: number; regionId?: number; missingDay?: string }>;
+        duplicateBuckets?: Array<{ type_id?: number; region_id?: number; bucket_day?: string; bucketDay?: string }>;
+        staleLatest?: Array<{ type_id?: number; region_id?: number; updated_at?: string }>;
+      };
+      const missingDays = Array.isArray(report.missingDays) ? report.missingDays : [];
+      const duplicateBuckets = Array.isArray(report.duplicateBuckets) ? report.duplicateBuckets : [];
+      const staleLatest = Array.isArray(report.staleLatest) ? report.staleLatest : [];
+      return {
+        ok: true,
+        report: {
+          generatedAt: report.generatedAt ?? new Date().toISOString(),
+          lookbackDays: report.lookbackDays ?? 30,
+          missingDays: missingDays.map((entry) => ({
+            typeId: Number(entry.typeId ?? entry.type_id ?? 0),
+            regionId: Number(entry.regionId ?? entry.region_id ?? 0),
+            missingDay: entry.missingDay ?? "",
+          })),
+          duplicateBuckets: duplicateBuckets.map((entry) => ({
+            typeId: Number(entry.typeId ?? entry.type_id ?? 0),
+            regionId: Number(entry.regionId ?? entry.region_id ?? 0),
+            bucketDay: entry.bucketDay ?? entry.bucket_day ?? "",
+            bucketCount: Number(entry.bucket_count ?? 0),
+          })),
+          staleLatest: staleLatest.map((entry) => ({
+            typeId: Number(entry.typeId ?? entry.type_id ?? 0),
+            regionId: Number(entry.regionId ?? entry.region_id ?? 0),
+            updatedAt: entry.updated_at ?? "",
+          })),
+        },
+        hasIssues: missingDays.length > 0 || duplicateBuckets.length > 0 || staleLatest.length > 0
+      };
+    } catch (error) {
+      reply.code(503);
+      return { ok: false, message: "QA report not available", error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  app.get("/v1/internal/features", async (_request, reply) => ({
+    features: {
+      structureOrders: {
+        enabled: config.features.structureOrders,
+        structures: config.structureOrders.structures
+      }
+    }
+  }));
 
   app.get("/v1/taxonomy/search", async (request: FastifyRequest<{ Querystring: TaxonomySearchQuery }>, reply) => {
     const query = request.query ?? {};
@@ -406,25 +492,7 @@ export function createApp(): FastifyInstance {
     }
     reply.header("X-Schema-Hash", schemaHash);
 
-    const meta = {
-      schemaHash,
-      cache: {
-        maxAgeSeconds: cache.maxAgeSeconds,
-        staleWhileRevalidateSeconds: cache.staleWhileRevalidateSeconds,
-        generatedAt: cache.generatedAt.toISOString(),
-        control: cacheControlHeader,
-        refreshApplied: refresh,
-      },
-      parameters: {
-        typeId,
-        regionId,
-        limit: limitValue ?? null,
-        order: order ?? null,
-        refresh,
-        startDate: startDateIso ?? null,
-        endDate: endDateIso ?? null,
-      },
-    } as const;
+    const cachePayload = serializeCacheEnvelope(cache);
 
     if (data.length === 0) {
       reply.code(404);
@@ -432,13 +500,15 @@ export function createApp(): FastifyInstance {
         statusCode: 404,
         error: "Not Found",
         message: `No market history found for type ${typeId} in region ${regionId}`,
-        meta,
+        cache: cachePayload,
+        schemaHash,
       };
     }
 
     return {
       data,
-      meta,
+      cache: cachePayload,
+      schemaHash,
     };
   });
 
@@ -488,21 +558,7 @@ export function createApp(): FastifyInstance {
     }
     reply.header("X-Schema-Hash", schemaHash);
 
-    const meta = {
-      schemaHash,
-      cache: {
-        maxAgeSeconds: cache.maxAgeSeconds,
-        staleWhileRevalidateSeconds: cache.staleWhileRevalidateSeconds,
-        generatedAt: cache.generatedAt.toISOString(),
-        control: cacheControlHeader,
-        refreshApplied: refresh,
-      },
-      parameters: {
-        typeId,
-        regionId,
-        refresh,
-      },
-    } as const;
+    const cachePayload = serializeCacheEnvelope(cache);
 
     if (!data) {
       reply.code(404);
@@ -510,13 +566,81 @@ export function createApp(): FastifyInstance {
         statusCode: 404,
         error: "Not Found",
         message: `No market snapshot found for type ${typeId} in region ${regionId}`,
-        meta,
+        cache: cachePayload,
+        schemaHash,
       };
-    }
+      }
 
     return {
       data,
-      meta,
+      cache: cachePayload,
+      schemaHash,
+    };
+  });
+
+  app.get("/v1/market/structures/:structureId/orders", async (
+    request: FastifyRequest<{ Params: { structureId: string }; Querystring: StructureOrdersQuerystring }>,
+    reply
+  ) => {
+    if (!config.features.structureOrders) {
+      reply.code(404);
+      return {
+        statusCode: 404,
+        error: "Not Found",
+        message: "Private structure orders feature is disabled"
+      };
+    }
+
+    const structureId = Number.parseInt(request.params.structureId, 10);
+    if (!Number.isFinite(structureId) || structureId <= 0) {
+      reply.code(400);
+      return {
+        statusCode: 400,
+        error: "Bad Request",
+        message: "structureId must be a positive integer"
+      };
+    }
+
+    const refresh = parseBoolean(request.query?.refresh) ?? false;
+    const typeIdRaw = request.query?.typeId;
+    let typeId: number | undefined;
+
+    if (typeIdRaw !== undefined) {
+      const parsedTypeId = parseInteger(typeIdRaw);
+      if (!parsedTypeId || parsedTypeId <= 0) {
+        reply.code(400);
+        return {
+          statusCode: 400,
+          error: "Bad Request",
+          message: "typeId must be a positive integer"
+        };
+      }
+      typeId = parsedTypeId;
+    }
+
+    const { data, cache } = await getStructureOrders(request.server.pg.pool, structureId, {
+      typeId,
+      cache: {
+        scope: "private",
+        maxAgeSeconds: 120,
+        staleWhileRevalidateSeconds: 60
+      }
+    });
+
+    const cacheControlHeader = refresh
+      ? "private, max-age=0, must-revalidate"
+      : "private, max-age=120, stale-while-revalidate=60";
+
+    applyCacheHeaders(reply, cacheControlHeader, cache.generatedAt);
+    if (refresh) {
+      reply.header("Warning", "199 - \"Refresh requested; downstream caches bypassed\"");
+    }
+    reply.header("X-Schema-Hash", MANIFEST_SCHEMA_HASH);
+
+    return {
+      data,
+      cache: serializeCacheEnvelope(cache),
+      schemaHash: MANIFEST_SCHEMA_HASH
     };
   });
 

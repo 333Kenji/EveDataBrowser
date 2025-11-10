@@ -1,5 +1,10 @@
-import { lazy, Suspense, useId, useMemo, type CSSProperties } from 'react';
+import { lazy, Suspense, useEffect, useId, useMemo, useState, type CSSProperties } from 'react';
 import { MarketHistoryChart, useUnifiedMarketModel } from '../../features/market-browser/MarketHistoryChart';
+import { useMarketQaStatus } from '../../hooks/api/useMarketQaStatus';
+import { useFeatureFlags } from '../../hooks/api/useFeatureFlags';
+import { useStructureOrders } from '../../hooks/api/useStructureOrders';
+import type { StructureOrderFeatureFlag } from '../../services/feature-flags-client';
+import type { StructureOrder } from '../../services/structure-orders-client';
 
 const LazyCanvasMarketHistoryChart = lazy(() => import('../../features/market-browser/CanvasMarketHistoryChart').then((module) => ({ default: module.CanvasMarketHistoryChart })));
 
@@ -19,7 +24,17 @@ interface MarketInsightsSectionProps {
 export function MarketInsightsSection({ typeId, experimentalCanvas = false, headingLevel = 'h5' }: MarketInsightsSectionProps) {
   const headingId = useId();
   const marketQuery = useUnifiedMarketModel(typeId);
-  const { status, model, error, refetch } = marketQuery;
+  const {
+    status,
+    model,
+    error,
+    refetch,
+    cache,
+    requestRefresh,
+    isFetching,
+  } = marketQuery;
+  const qaQuery = useMarketQaStatus();
+  const featureQuery = useFeatureFlags();
   const snapshot = model?.snapshot;
   const shouldShowSnapshot = snapshot && (status === 'ok' || status === 'partial');
   const volumeStats = useMemo(() => computeVolumeAverages(model?.days ?? []), [model?.days]);
@@ -51,6 +66,15 @@ export function MarketInsightsSection({ typeId, experimentalCanvas = false, head
           Market activity
         </HeadingTag>
         <MarketDataStatusBanner status={status} error={error} refetch={refetch} />
+        <MarketDataFreshnessIndicator cache={cache} isRefreshing={isFetching} onRefresh={requestRefresh} />
+        <MarketQaBanner query={qaQuery} />
+        <StructureOrdersPanel
+          typeId={typeId}
+          feature={featureQuery.data?.features.structureOrders}
+          featureLoading={featureQuery.isFetching}
+          featureError={featureQuery.isError ? featureQuery.error : null}
+          refetchFeatures={featureQuery.refetch}
+        />
         <MarketHistoryChart typeId={typeId} prefetchedQuery={marketQuery} />
         {experimentalCanvas ? (
           <Suspense fallback={<div className="item-detail__marketCanvas" aria-busy="true">Loading canvas prototype…</div>}>
@@ -187,6 +211,368 @@ function MarketDataStatusBanner({ status, error, refetch }: MarketDataStatusBann
   }
 
   return null;
+}
+
+interface MarketDataFreshnessProps {
+  cache?: {
+    scope: 'public' | 'private';
+    maxAgeSeconds: number;
+    staleWhileRevalidateSeconds: number;
+    generatedAt: string;
+  };
+  isRefreshing: boolean;
+  onRefresh: () => void;
+}
+
+function MarketDataFreshnessIndicator({ cache, isRefreshing, onRefresh }: MarketDataFreshnessProps) {
+  if (!cache) {
+    return null;
+  }
+  const generatedAtMs = Date.parse(cache.generatedAt);
+  if (!Number.isFinite(generatedAtMs)) {
+    return null;
+  }
+  const ageMs = Math.max(0, Date.now() - generatedAtMs);
+  const maxAgeMs = cache.maxAgeSeconds * 1000;
+  const swrMs = cache.staleWhileRevalidateSeconds * 1000;
+  const staleThreshold = maxAgeMs + swrMs;
+  const stale = ageMs > staleThreshold;
+  const expiring = !stale && ageMs > maxAgeMs;
+  const stateStyle: CSSProperties = {
+    fontSize: '0.75rem',
+    lineHeight: 1.4,
+    borderRadius: 6,
+    padding: '0.5rem 0.65rem',
+    border: stale
+      ? '1px solid rgba(248, 113, 113, 0.45)'
+      : expiring
+        ? '1px solid rgba(234, 179, 8, 0.4)'
+        : '1px solid rgba(148, 163, 184, 0.25)',
+    background: stale
+      ? 'rgba(30, 41, 59, 0.55)'
+      : expiring
+        ? 'rgba(30, 41, 59, 0.45)'
+        : 'rgba(15, 23, 42, 0.35)',
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '0.5rem',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  };
+  const label = stale
+    ? 'Data is stale'
+    : expiring
+      ? 'Refresh recommended soon'
+      : 'Fresh';
+
+  return (
+    <div style={stateStyle}>
+      <span>
+        {label} — generated {formatRelativeAge(ageMs)} ({cache.scope} cache)
+      </span>
+      <button
+        type="button"
+        className="item-detail__marketAction"
+        onClick={() => { onRefresh(); }}
+        disabled={isRefreshing}
+      >
+        {isRefreshing ? 'Refreshing…' : 'Refresh'}
+      </button>
+    </div>
+  );
+}
+
+interface MarketQaBannerProps {
+  query: ReturnType<typeof useMarketQaStatus>;
+}
+
+function MarketQaBanner({ query }: MarketQaBannerProps) {
+  const report = query.data?.report;
+  const hasIssues = query.data?.hasIssues ?? false;
+  if (!report || !hasIssues) {
+    return null;
+  }
+
+  const messages: string[] = [];
+  if (report.missingDays.length > 0) {
+    messages.push(`Missing ${report.missingDays.length} day${report.missingDays.length === 1 ? '' : 's'} in the last ${report.lookbackDays} days.`);
+  }
+  if (report.duplicateBuckets.length > 0) {
+    messages.push(`Detected ${report.duplicateBuckets.length} duplicate candle bucket${report.duplicateBuckets.length === 1 ? '' : 's'}.`);
+  }
+  if (report.staleLatest.length > 0) {
+    messages.push(`Latest snapshot stale for ${report.staleLatest.length} type${report.staleLatest.length === 1 ? '' : 's'}.`);
+  }
+
+  return (
+    <div className="item-detail__marketQaBanner" role="status" aria-live="polite" style={{ marginTop: '0.5rem', padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid rgba(248, 113, 113, 0.45)', background: 'rgba(30, 41, 59, 0.45)', display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem' }}>
+      <strong>QA alert</strong>
+      {messages.map((msg) => (
+        <span key={msg}>{msg}</span>
+      ))}
+      <span style={{ fontSize: '0.7rem', color: 'rgba(148, 163, 184, 0.9)' }}>Review `logs/ingestion/qa/latest.json` for details.</span>
+    </div>
+  );
+}
+
+interface StructureOrdersPanelProps {
+  typeId: string;
+  feature?: StructureOrderFeatureFlag;
+  featureLoading: boolean;
+  featureError: Error | null;
+  refetchFeatures: () => Promise<unknown>;
+}
+
+function StructureOrdersPanel({ typeId, feature, featureLoading, featureError, refetchFeatures }: StructureOrdersPanelProps) {
+  const [selectedStructureId, setSelectedStructureId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!feature?.enabled || !Array.isArray(feature.structures) || feature.structures.length === 0) {
+      setSelectedStructureId(null);
+      return;
+    }
+    setSelectedStructureId((current) => {
+      if (current && feature.structures.includes(current)) {
+        return current;
+      }
+      return feature.structures[0] ?? null;
+    });
+  }, [feature]);
+
+  if (featureLoading) {
+    return <StructureOrdersMessage>Checking feature availability…</StructureOrdersMessage>;
+  }
+
+  if (featureError) {
+    return (
+      <StructureOrdersMessage>
+        Unable to load private structure order settings.
+        <button
+          type="button"
+          className="item-detail__marketAction"
+          style={{ marginLeft: '0.5rem' }}
+          onClick={() => { void refetchFeatures(); }}
+        >
+          Retry
+        </button>
+      </StructureOrdersMessage>
+    );
+  }
+
+  if (!feature?.enabled) {
+    return <StructureOrdersMessage>Private structure orders remain hidden because the feature flag is disabled.</StructureOrdersMessage>;
+  }
+
+  const structures = feature.structures ?? [];
+  if (structures.length === 0) {
+    return <StructureOrdersMessage>No private structures are configured for this environment.</StructureOrdersMessage>;
+  }
+
+  if (!selectedStructureId) {
+    return null;
+  }
+
+  const numericTypeId = Number.parseInt(typeId, 10);
+  const normalizedTypeId = Number.isFinite(numericTypeId) ? numericTypeId : null;
+
+  const ordersQuery = useStructureOrders(selectedStructureId, normalizedTypeId, { enabled: true });
+  const orders = ordersQuery.data?.data ?? [];
+  const sellOrders = orders.filter((order) => !order.isBuyOrder);
+  const buyOrders = orders.filter((order) => order.isBuyOrder);
+  const cacheGeneratedAt = ordersQuery.data?.cache?.generatedAt ? Date.parse(ordersQuery.data.cache.generatedAt) : undefined;
+  const cacheAgeMs = Number.isFinite(cacheGeneratedAt) ? Math.max(0, Date.now() - (cacheGeneratedAt as number)) : undefined;
+
+  return (
+    <div className="item-detail__structureOrders">
+      <div className="item-detail__structureOrdersHeader">
+        <div>
+          <p className="item-detail__marketSubheading">Private structure orders</p>
+          {typeof cacheAgeMs === 'number' ? (
+            <span className="item-detail__structureOrdersMeta">Generated {formatRelativeAge(cacheAgeMs)} (private cache)</span>
+          ) : null}
+        </div>
+        <div className="item-detail__structureOrdersControls">
+          {structures.length > 1 ? (
+            <select
+              className="item-detail__structureOrdersSelect"
+              aria-label="Structure"
+              value={selectedStructureId ?? structures[0]!}
+              onChange={(event) => {
+                const nextValue = Number.parseInt(event.target.value, 10);
+                setSelectedStructureId(Number.isFinite(nextValue) ? nextValue : structures[0]!);
+              }}
+            >
+              {structures.map((structureId) => (
+                <option key={structureId} value={structureId}>
+                  {formatStructureLabel(structureId)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="item-detail__structureOrdersLabel">{formatStructureLabel(structures[0]!)}</span>
+          )}
+          <button
+            type="button"
+            className="item-detail__marketAction"
+            onClick={() => { void ordersQuery.refetch({ meta: { refresh: true } }); }}
+            disabled={ordersQuery.isFetching}
+          >
+            {ordersQuery.isFetching ? 'Refreshing…' : 'Refresh'}
+          </button>
+        </div>
+      </div>
+      {ordersQuery.isLoading ? (
+        <StructureOrdersMessage>Loading private orders…</StructureOrdersMessage>
+      ) : ordersQuery.isError ? (
+        <StructureOrdersMessage>
+          Unable to load private orders for this structure.
+          <button
+            type="button"
+            className="item-detail__marketAction"
+            style={{ marginLeft: '0.5rem' }}
+            onClick={() => { void ordersQuery.refetch(); }}
+          >
+            Retry
+          </button>
+        </StructureOrdersMessage>
+      ) : (
+        <>
+          <div className="item-detail__structureOrdersGrid">
+            <StructureOrdersTable title="Sell Orders" variant="sell" orders={sellOrders} />
+            <StructureOrdersTable title="Buy Orders" variant="buy" orders={buyOrders} />
+          </div>
+          <div className="item-detail__structureOrdersFooter">
+            <span>
+              Cache policy: private · max-age {ordersQuery.data?.cache?.maxAgeSeconds ?? 120}s · stale-while-revalidate{' '}
+              {ordersQuery.data?.cache?.staleWhileRevalidateSeconds ?? 60}s
+            </span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+interface StructureOrdersTableProps {
+  title: string;
+  orders: StructureOrder[];
+  variant: 'buy' | 'sell';
+}
+
+function StructureOrdersTable({ title, orders, variant }: StructureOrdersTableProps) {
+  const limitedOrders = orders.slice(0, 8);
+  return (
+    <div className="item-detail__structureOrdersColumn" aria-live="polite">
+      <h6 className="item-detail__structureOrdersHeading">{title}</h6>
+      {limitedOrders.length === 0 ? (
+        <p className="item-detail__structureOrdersEmpty">No {variant} orders for this type.</p>
+      ) : (
+        <table className="item-detail__structureOrdersTable">
+          <thead>
+            <tr>
+              <th scope="col">Price (ISK)</th>
+              <th scope="col">Volume</th>
+              <th scope="col">Issued</th>
+            </tr>
+          </thead>
+          <tbody>
+            {limitedOrders.map((order) => (
+              <tr key={order.orderId}>
+                <td data-variant={variant}>{formatIsk(order.price)}</td>
+                <td>{formatVolume(order.volumeRemain)}</td>
+                <td>{formatTimestamp(order.issuedAt)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+interface StructureOrdersMessageProps {
+  children: React.ReactNode;
+}
+
+function StructureOrdersMessage({ children }: StructureOrdersMessageProps) {
+  return (
+    <div className="item-detail__structureOrdersMessage" role="note">
+      {children}
+    </div>
+  );
+}
+
+function formatStructureLabel(structureId: number): string {
+  return `Structure ${structureId.toLocaleString()}`;
+}
+
+function formatIsk(value?: number): string {
+  if (!Number.isFinite(value)) {
+    return '—';
+  }
+  const absolute = Math.abs(value as number);
+  if (absolute >= 1_000_000_000) {
+    return `${((value as number) / 1_000_000_000).toFixed(2)}B`;
+  }
+  if (absolute >= 1_000_000) {
+    return `${((value as number) / 1_000_000).toFixed(2)}M`;
+  }
+  if (absolute >= 1_000) {
+    return `${((value as number) / 1_000).toFixed(1)}K`;
+  }
+  return (value as number).toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function formatVolume(value?: number): string {
+  if (!Number.isFinite(value)) {
+    return '—';
+  }
+  if ((value as number) >= 1_000_000) {
+    return `${((value as number) / 1_000_000).toFixed(1)}M`;
+  }
+  if ((value as number) >= 1_000) {
+    return `${((value as number) / 1_000).toFixed(1)}K`;
+  }
+  return (value as number).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
+
+function formatTimestamp(value?: string): string {
+  if (!value) {
+    return '—';
+  }
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) {
+    return value;
+  }
+  return new Date(parsed).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatRelativeAge(ageMs: number): string {
+  if (!Number.isFinite(ageMs) || ageMs < 0) {
+    return 'just now';
+  }
+  const seconds = Math.floor(ageMs / 1000);
+  if (seconds < 60) {
+    return `${seconds}s ago`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+  const days = Math.floor(hours / 24);
+  if (days < 7) {
+    return `${days}d ago`;
+  }
+  const date = new Date(Date.now() - ageMs);
+  return date.toLocaleString();
 }
 
 function computeVolumeAverages(days: UnifiedHistoryPoint[]): Array<{ label: string; value?: number }> {

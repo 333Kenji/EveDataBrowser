@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useMemo, useLayoutEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useLayoutEffect, useCallback } from 'react';
 import { useMarketHistoryQuery } from '../../hooks/api/useMarketHistoryQuery';
 import type { MarketHistoryApiResponse } from '../../services/market-history-client';
 import { useMarketHistoryStore } from './marketHistoryStore';
@@ -134,6 +134,10 @@ export interface UnifiedMarketModelQuery {
   model?: UnifiedMarketModel;
   status: 'loading' | 'error' | 'empty' | 'partial' | 'ok';
   error?: Error;
+  cache?: MarketHistoryApiResponse['cache'];
+  schemaHash?: string;
+  requestRefresh: () => void;
+  isFetching: boolean;
   refetch: () => Promise<any>;
 }
 
@@ -257,12 +261,20 @@ export function useUnifiedMarketModel(typeId: string | null): UnifiedMarketModel
     }
   }, []);
 
+  const requestRefresh = useCallback(() => {
+    if (!typeId) {
+      return;
+    }
+    setRefreshState((state) => (state === 'pending' ? state : 'pending'));
+  }, [typeId]);
+
   const historyQuery = useMarketHistoryQuery(typeId, {
     enabled: Boolean(typeId),
     refresh: refreshState === 'pending',
   });
 
   const { fetchStatus, refetch } = historyQuery;
+  const isFetching = fetchStatus === 'fetching';
 
   useEffect(() => {
     if (refreshState === 'pending' && fetchStatus !== 'fetching') {
@@ -315,28 +327,49 @@ export function useUnifiedMarketModel(typeId: string | null): UnifiedMarketModel
       status: 'empty',
       model: { typeId: '', days: [] },
       refetch: historyQuery.refetch,
+      cache: undefined,
+      schemaHash: undefined,
+      requestRefresh,
+      isFetching,
     } satisfies UnifiedMarketModelQuery;
   }
 
   if (historyQuery.isPending || historyQuery.fetchStatus === 'fetching') {
-    return { status: 'loading', refetch: historyQuery.refetch };
+    return {
+      status: 'loading',
+      refetch: historyQuery.refetch,
+      cache: historyQuery.data?.cache,
+      schemaHash: historyQuery.data?.schemaHash,
+      requestRefresh,
+      isFetching,
+    };
   }
 
   if (historyQuery.isError) {
-    return { status: 'error', error: historyQuery.error as Error, refetch: historyQuery.refetch };
+    return {
+      status: 'error',
+      error: historyQuery.error as Error,
+      refetch: historyQuery.refetch,
+      cache: historyQuery.data?.cache,
+      schemaHash: historyQuery.data?.schemaHash,
+      requestRefresh,
+      isFetching,
+    };
   }
 
   const model = buildUnifiedModel(historyQuery.data as MarketHistoryApiResponse | undefined, typeId);
+  const cache = historyQuery.data?.cache;
+  const schemaHash = historyQuery.data?.schemaHash;
 
   if (model.days.length === 0 && model.snapshot) {
-    return { status: 'partial', model, refetch: historyQuery.refetch };
+    return { status: 'partial', model, refetch: historyQuery.refetch, cache, schemaHash, requestRefresh, isFetching };
   }
 
   if (model.days.length === 0) {
-    return { status: 'empty', model, refetch: historyQuery.refetch };
+    return { status: 'empty', model, refetch: historyQuery.refetch, cache, schemaHash, requestRefresh, isFetching };
   }
 
-  return { status: 'ok', model, refetch: historyQuery.refetch };
+  return { status: 'ok', model, refetch: historyQuery.refetch, cache, schemaHash, requestRefresh, isFetching };
 }
 
 interface ChartProps {

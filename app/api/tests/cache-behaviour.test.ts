@@ -49,6 +49,7 @@ describe("API cache behaviour", () => {
         total: 1
       },
       cache: {
+        scope: "public",
         maxAgeSeconds: 7200,
         staleWhileRevalidateSeconds: 180,
         generatedAt
@@ -117,6 +118,7 @@ describe("API cache behaviour", () => {
         ]
       },
       cache: {
+        scope: "public",
         maxAgeSeconds: 3600,
         staleWhileRevalidateSeconds: 120,
         generatedAt
@@ -158,6 +160,7 @@ describe("API cache behaviour", () => {
     getItemDetailMock.mockResolvedValueOnce({
       data: null,
       cache: {
+        scope: "public",
         maxAgeSeconds: 3600,
         staleWhileRevalidateSeconds: 120,
         generatedAt
@@ -197,6 +200,7 @@ describe("API cache behaviour", () => {
         }
       ],
       cache: {
+        scope: "public",
         maxAgeSeconds: 300,
         staleWhileRevalidateSeconds: 120,
         generatedAt
@@ -219,6 +223,7 @@ describe("API cache behaviour", () => {
     getMarketHistoryMock.mockResolvedValueOnce({
       data: [],
       cache: {
+        scope: "public",
         maxAgeSeconds: 300,
         staleWhileRevalidateSeconds: 120,
         generatedAt
@@ -250,6 +255,7 @@ describe("API cache behaviour", () => {
         updatedAt: "2025-10-12T19:05:00.000Z"
       },
       cache: {
+        scope: "public",
         maxAgeSeconds: 300,
         staleWhileRevalidateSeconds: 120,
         generatedAt
@@ -272,6 +278,7 @@ describe("API cache behaviour", () => {
     getMarketLatestStatsMock.mockResolvedValueOnce({
       data: null,
       cache: {
+        scope: "public",
         maxAgeSeconds: 300,
         staleWhileRevalidateSeconds: 120,
         generatedAt

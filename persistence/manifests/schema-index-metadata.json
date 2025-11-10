@@ -95,6 +95,48 @@
         "type_id",
         "region_id"
       ]
+    },
+    {
+      "schema": "public",
+      "table": "market_history_refresh_cache",
+      "name": "market_history_refresh_cache_cached_until_idx",
+      "method": "btree",
+      "source": "persistence/migrations/20251109_create_market_aux_tables.sql",
+      "columns": [
+        "cached_until"
+      ]
+    }
+    ,
+    {
+      "schema": "public",
+      "table": "market_price_history",
+      "name": "market_price_history_region_idx",
+      "method": "btree",
+      "source": "persistence/migrations/20251110_create_market_price_history.sql",
+      "columns": [
+        "region_id"
+      ]
+    },
+    {
+      "schema": "public",
+      "table": "market_price_history",
+      "name": "market_price_history_date_idx",
+      "method": "btree",
+      "source": "persistence/migrations/20251110_create_market_price_history.sql",
+      "columns": [
+        "ts_bucket_start"
+      ]
+    }
+     ,
+    {
+      "schema": "public",
+      "table": "structure_orders",
+      "name": "structure_orders_type_idx",
+      "method": "btree",
+      "source": "persistence/migrations/20251111_create_structure_orders.sql",
+      "columns": [
+        "type_id"
+      ]
     }
   ],
   "pending": []

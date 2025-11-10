@@ -13,7 +13,9 @@
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint \"src/**/*.{ts,tsx}\" \"tests/**/*.ts\" --max-warnings=0",
     "ingest:market:esi": "tsx src/ingest/ingest-esi-market-history.ts",
     "ingest:market:report": "tsx src/ingest/report-market-history.ts",
-    "ingest:market:coverage": "tsx src/ingest/market-history-coverage-report.ts"
+    "ingest:market:coverage": "tsx src/ingest/market-history-coverage-report.ts",
+    "ingest:market:prices": "tsx src/ingest/run-market-prices.ts",
+    "ingest:structure:orders": "tsx src/ingest/run-structure-orders.ts"
   },
   "dependencies": {
   "@evedatabrowser/contracts": "file:../../packages/contracts",

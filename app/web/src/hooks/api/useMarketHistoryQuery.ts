@@ -11,7 +11,7 @@ interface UseMarketHistoryQueryOptions {
 }
 
 const MARKET_STALE_TIME_MS = CACHE_POLICY_DEFAULTS.market.maxAgeSeconds * 1000;
-const MARKET_CACHE_TIME_MS = MARKET_STALE_TIME_MS;
+const MARKET_GC_TIME_MS = (CACHE_POLICY_DEFAULTS.market.maxAgeSeconds + (CACHE_POLICY_DEFAULTS.market.staleWhileRevalidateSeconds ?? 0)) * 1000;
 
 export type MarketHistoryQueryKey = [
   'market-history',
@@ -43,7 +43,7 @@ export function useMarketHistoryQuery(typeId: string | null, options: UseMarketH
     queryKey,
     enabled: Boolean(typeId) && (options.enabled ?? true),
     staleTime: MARKET_STALE_TIME_MS,
-    gcTime: MARKET_CACHE_TIME_MS,
+    gcTime: MARKET_GC_TIME_MS,
     refetchOnWindowFocus: false,
     retry: 1,
     keepPreviousData: true,

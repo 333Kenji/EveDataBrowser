@@ -1,0 +1,16 @@
+[Unit]
+Description=EDB Market Structure Orders Ingest
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/projects/EVEDataBrowser
+EnvironmentFile=/etc/edb/market.env
+ExecStart=/usr/bin/env npm --prefix app/api run ingest:structure:orders
+Nice=5
+StandardOutput=journal
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

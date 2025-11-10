@@ -7,6 +7,34 @@ export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonValue[] | { readonly [key: string]: JsonValue };
 
 /**
+ * Row projection for public.item_prices_fact.
+ * Source schema path: data/schema/combined-schema-reference.json#/tables/itemPricesFact
+ */
+export interface ItemPricesFactRow {
+  /** Column public.item_prices_fact.type_id – data/schema/combined-schema-reference.json#/tables/itemPricesFact */
+  readonly type_id: number;
+  /** Column public.item_prices_fact.average – data/schema/combined-schema-reference.json#/tables/itemPricesFact */
+  readonly average: string | null;
+  /** Column public.item_prices_fact.adjusted – data/schema/combined-schema-reference.json#/tables/itemPricesFact */
+  readonly adjusted: string | null;
+  /** Column public.item_prices_fact.updated_at – data/schema/combined-schema-reference.json#/tables/itemPricesFact */
+  readonly updated_at: string;
+}
+/**
+ * Row projection for public.market_history_refresh_cache.
+ * Source schema path: data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache
+ */
+export interface MarketHistoryRefreshCacheRow {
+  /** Column public.market_history_refresh_cache.type_id – data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache */
+  readonly type_id: number;
+  /** Column public.market_history_refresh_cache.region_id – data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache */
+  readonly region_id: number;
+  /** Column public.market_history_refresh_cache.cached_until – data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache */
+  readonly cached_until: string | null;
+  /** Column public.market_history_refresh_cache.last_checked_at – data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache */
+  readonly last_checked_at: string | null;
+}
+/**
  * Row projection for public.market_latest_stats.
  * Source schema path: data/schema/combined-schema-reference.json#/tables/marketLatestStats
  */
@@ -213,4 +241,26 @@ export interface SdeTypesRow {
   readonly market_group_id: number | null;
   /** Column sde_master.sde_types.meta_group_id – data/schema/combined-schema-reference.json#/tables/types */
   readonly meta_group_id: number | null;
+}
+/**
+ * Row projection for public.structure_orders.
+ * Source schema path: data/schema/combined-schema-reference.json#/tables/structureOrders
+ */
+export interface StructureOrdersRow {
+  /** Column public.structure_orders.structure_id – data/schema/combined-schema-reference.json#/tables/structureOrders */
+  readonly structure_id: number;
+  /** Column public.structure_orders.order_id – data/schema/combined-schema-reference.json#/tables/structureOrders */
+  readonly order_id: number;
+  /** Column public.structure_orders.type_id – data/schema/combined-schema-reference.json#/tables/structureOrders */
+  readonly type_id: number;
+  /** Column public.structure_orders.is_buy_order – data/schema/combined-schema-reference.json#/tables/structureOrders */
+  readonly is_buy_order: boolean;
+  /** Column public.structure_orders.price – data/schema/combined-schema-reference.json#/tables/structureOrders */
+  readonly price: string;
+  /** Column public.structure_orders.volume_remain – data/schema/combined-schema-reference.json#/tables/structureOrders */
+  readonly volume_remain: number;
+  /** Column public.structure_orders.issued_at – data/schema/combined-schema-reference.json#/tables/structureOrders */
+  readonly issued_at: string;
+  /** Column public.structure_orders.last_updated_at – data/schema/combined-schema-reference.json#/tables/structureOrders */
+  readonly last_updated_at: string;
 }

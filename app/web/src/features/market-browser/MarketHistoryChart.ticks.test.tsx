@@ -7,6 +7,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // Provide store context mock (zustand store imported inside component). If store has defaults we can rely on them.
 
 // Mock fetch to return deterministic data with a couple of days and volumes so ticks render.
+const CACHE_PAYLOAD = {
+  scope: 'public',
+  maxAgeSeconds: 300,
+  staleWhileRevalidateSeconds: 120,
+  generatedAt: '2025-10-13T10:10:00Z',
+};
+
+const HISTORY_SCHEMA_HASH = 'ticks-test-history';
+const LATEST_SCHEMA_HASH = 'ticks-test-latest';
+
 const buildHistoryResponse = () => ({
   data: [
     {
@@ -36,6 +46,8 @@ const buildHistoryResponse = () => ({
       lastIngestedAt: '2025-10-05T00:00:00Z',
     },
   ],
+  cache: CACHE_PAYLOAD,
+  schemaHash: HISTORY_SCHEMA_HASH,
   meta: { schemaHash: 'ticks-test-history' },
 });
 
@@ -51,7 +63,8 @@ const buildSnapshotResponse = () => ({
     source: 'test-suite',
     updatedAt: '2025-10-04T00:00:00Z',
   },
-  meta: { schemaHash: 'ticks-test-latest' },
+  cache: { ...CACHE_PAYLOAD, generatedAt: '2025-10-13T10:12:00Z' },
+  schemaHash: LATEST_SCHEMA_HASH,
 });
 
 const mockFetch = vi.fn(async (url: string) => {

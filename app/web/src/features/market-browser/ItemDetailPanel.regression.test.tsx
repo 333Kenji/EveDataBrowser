@@ -115,7 +115,7 @@ describe('ItemDetailPanel regression', () => {
     setType('999');
     const qc = createTestClient();
     render(<QueryClientProvider client={qc}><ItemDetailPanel /></QueryClientProvider>);
-  await waitFor(() => expect(screen.queryByText(/Loading item detail…/)).not.toBeInTheDocument(), { timeout: 3000 });
-    expect(screen.getByText(/No detail available for type 999/i)).toBeTruthy();
+    await screen.findByText(/Item Detail unavailable for type 999/i, undefined, { timeout: 4000 });
+    expect(screen.getByText(/Item Detail unavailable for type 999/i)).toBeTruthy();
   });
 });

@@ -37,6 +37,7 @@ test("GET /v1/internal/metrics returns uptime", async () => {
     checks: {
       postgres: { status: string; latencyMs: number | null; serverTime?: string | null; error?: string };
       cache: { status: string; policy: { market: { maxAge: number } } };
+      marketIngestion: Record<string, unknown> | null;
     };
   }>();
 
@@ -47,6 +48,7 @@ test("GET /v1/internal/metrics returns uptime", async () => {
   expect(payload.checks.postgres.status).toBe("ok");
   expect(payload.checks.postgres.latencyMs).toEqual(expect.any(Number));
   expect(payload.checks.cache.policy.market.maxAge).toBe(config.cache.market.maxAge);
+  expect(payload.checks.marketIngestion === null || typeof payload.checks.marketIngestion === "object").toBeTruthy();
 });
 
 
@@ -97,16 +99,23 @@ test("GET /v1/market/history returns history payload with metadata", async () =>
   expect(response.statusCode).toBe(200);
   expect(response.headers["cache-control"]).toContain("max-age=300");
   expect(response.headers["x-schema-hash"]).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
-  const payload = response.json<{ data: Array<{ typeId: number }>; meta: { parameters: { refresh: boolean } } }>();
+  const payload = response.json<{
+    data: Array<{ typeId: number }>;
+    cache: { scope: string; maxAgeSeconds: number };
+    schemaHash: string;
+  }>();
   expect(payload.data).toHaveLength(1);
   expect(payload.data[0]?.typeId).toBe(603);
-  expect(payload.meta.parameters.refresh).toBe(false);
+  expect(payload.cache.scope).toBe("public");
+  expect(payload.cache.maxAgeSeconds).toBe(300);
+  expect(payload.schemaHash).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
 });
 
 test("GET /v1/market/history returns 404 when repository yields no data", async () => {
   mocks.getMarketHistoryMock.mockResolvedValueOnce({
     data: [],
     cache: {
+      scope: "public",
       maxAgeSeconds: 300,
       staleWhileRevalidateSeconds: 120,
       generatedAt: new Date("2025-10-13T10:10:00Z")
@@ -116,8 +125,9 @@ test("GET /v1/market/history returns 404 when repository yields no data", async 
 
   const response = await app.inject({ method: "GET", url: "/v1/market/history?typeId=999999&regionId=10000002" });
   expect(response.statusCode).toBe(404);
-  const payload = response.json<{ meta: { schemaHash: string } }>();
-  expect(payload.meta.schemaHash).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
+  const payload = response.json<{ schemaHash: string; cache: { generatedAt: string } }>();
+  expect(payload.schemaHash).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
+  expect(payload.cache.generatedAt).toBe("2025-10-13T10:10:00.000Z");
 });
 
 test("GET /v1/market/history rejects invalid ISO timestamps", async () => {
@@ -145,15 +155,9 @@ test("GET /v1/market/history sets refresh flag when refresh=1", async () => {
   const response = await app.inject({ method: "GET", url: "/v1/market/history?typeId=603&regionId=10000002&refresh=1" });
   expect(response.statusCode).toBe(200);
   expect(response.headers["cache-control"]).toBe("private, max-age=0, must-revalidate");
-  const payload = response.json<{
-    meta: {
-      cache: { control: string; refreshApplied: boolean };
-      parameters: { refresh: boolean };
-    };
-  }>();
-  expect(payload.meta.parameters.refresh).toBe(true);
-  expect(payload.meta.cache.control).toBe("private, max-age=0, must-revalidate");
-  expect(payload.meta.cache.refreshApplied).toBe(true);
+  const payload = response.json<{ cache: { generatedAt: string }; schemaHash: string }>();
+  expect(payload.cache.generatedAt).toEqual(expect.any(String));
+  expect(payload.schemaHash).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
   expect(mocks.getMarketHistoryMock).toHaveBeenCalledWith(
     expect.anything(),
     expect.objectContaining({ typeId: 603, regionId: 10000002 }),
@@ -164,9 +168,17 @@ test("GET /v1/market/history sets refresh flag when refresh=1", async () => {
 test("GET /v1/market/latest returns snapshot payload", async () => {
   const response = await app.inject({ method: "GET", url: "/v1/market/latest?typeId=603&regionId=10000002" });
   expect(response.statusCode).toBe(200);
-  const payload = response.json<{ data: { snapshotMedian: number | null }; meta: { schemaHash: string } }>();
+  const payload = response.json<{ data: { snapshotMedian: number | null }; cache: { scope: string }; schemaHash: string }>();
   expect(payload.data.snapshotMedian).toBe(158250000);
-  expect(payload.meta.schemaHash).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
+  expect(payload.cache.scope).toBe("public");
+  expect(payload.schemaHash).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
+});
+
+test("GET /v1/market/structures/:structureId/orders returns 404 when feature flag off", async () => {
+  const response = await app.inject({ method: "GET", url: "/v1/market/structures/1/orders" });
+  expect(response.statusCode).toBe(404);
+  const payload = response.json<{ message: string }>();
+  expect(payload.message).toContain("feature is disabled");
 });
 
 test("GET /v1/internal/metrics surfaces postgres errors", async () => {
@@ -210,6 +222,7 @@ test("GET /v1/market/latest returns 404 when snapshot missing", async () => {
   mocks.getMarketLatestStatsMock.mockResolvedValueOnce({
     data: null,
     cache: {
+      scope: "public",
       maxAgeSeconds: 300,
       staleWhileRevalidateSeconds: 120,
       generatedAt: new Date("2025-10-13T10:12:00Z")
@@ -219,6 +232,7 @@ test("GET /v1/market/latest returns 404 when snapshot missing", async () => {
 
   const response = await app.inject({ method: "GET", url: "/v1/market/latest?typeId=555555&regionId=10000002" });
   expect(response.statusCode).toBe(404);
-  const payload = response.json<{ meta: { schemaHash: string } }>();
-  expect(payload.meta.schemaHash).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
+  const payload = response.json<{ schemaHash: string; cache: { generatedAt: string } }>();
+  expect(payload.schemaHash).toBe("e7c02046d71511e0a0999af6cda1d67c250e5ca813c2e0bb428d0209452635ac");
+  expect(payload.cache.generatedAt).toBe("2025-10-13T10:12:00.000Z");
 });

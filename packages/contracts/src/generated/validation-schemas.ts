@@ -4,7 +4,7 @@
 // Generated at: 2025-10-13T00:45:00Z
 
 import { z } from "zod";
-import type { JsonValue, MarketLatestStatsRow, MarketPriceHistoryRow, SdeCategoriesRow, SdeGroupsRow, SdeMarketGroupsRow, SdeMasterMaterialsRow, SdeMasterProductsRow, SdeMetaGroupsRow, SdeTypesRow } from "./domain-types.js";
+import type { JsonValue, ItemPricesFactRow, MarketHistoryRefreshCacheRow, MarketLatestStatsRow, MarketPriceHistoryRow, SdeCategoriesRow, SdeGroupsRow, SdeMarketGroupsRow, SdeMasterMaterialsRow, SdeMasterProductsRow, SdeMetaGroupsRow, SdeTypesRow, StructureOrdersRow } from "./domain-types.js";
 
 const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
   z.string(),
@@ -15,6 +15,18 @@ const jsonValueSchema: z.ZodType<JsonValue> = z.lazy(() => z.union([
   z.record(jsonValueSchema)
 ]));
 
+export const ItemPricesFactRowSchema: z.ZodType<ItemPricesFactRow> = z.object({
+  type_id: z.number().int().describe("Column public.item_prices_fact.type_id – data/schema/combined-schema-reference.json#/tables/itemPricesFact"),
+  average: z.string().nullable().describe("Column public.item_prices_fact.average – data/schema/combined-schema-reference.json#/tables/itemPricesFact"),
+  adjusted: z.string().nullable().describe("Column public.item_prices_fact.adjusted – data/schema/combined-schema-reference.json#/tables/itemPricesFact"),
+  updated_at: z.string().describe("Column public.item_prices_fact.updated_at – data/schema/combined-schema-reference.json#/tables/itemPricesFact"),
+}).strict().describe("public.item_prices_fact (data/schema/combined-schema-reference.json#/tables/itemPricesFact)");
+export const MarketHistoryRefreshCacheRowSchema: z.ZodType<MarketHistoryRefreshCacheRow> = z.object({
+  type_id: z.number().int().describe("Column public.market_history_refresh_cache.type_id – data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache"),
+  region_id: z.number().int().describe("Column public.market_history_refresh_cache.region_id – data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache"),
+  cached_until: z.string().nullable().describe("Column public.market_history_refresh_cache.cached_until – data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache"),
+  last_checked_at: z.string().nullable().describe("Column public.market_history_refresh_cache.last_checked_at – data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache"),
+}).strict().describe("public.market_history_refresh_cache (data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache)");
 export const MarketLatestStatsRowSchema: z.ZodType<MarketLatestStatsRow> = z.object({
   type_id: z.number().int().describe("Column public.market_latest_stats.type_id – data/schema/combined-schema-reference.json#/tables/marketLatestStats"),
   region_id: z.number().int().describe("Column public.market_latest_stats.region_id – data/schema/combined-schema-reference.json#/tables/marketLatestStats"),
@@ -110,8 +122,20 @@ export const SdeTypesRowSchema: z.ZodType<SdeTypesRow> = z.object({
   market_group_id: z.number().int().nullable().describe("Column sde_master.sde_types.market_group_id – data/schema/combined-schema-reference.json#/tables/types"),
   meta_group_id: z.number().int().nullable().describe("Column sde_master.sde_types.meta_group_id – data/schema/combined-schema-reference.json#/tables/types"),
 }).strict().describe("sde_master.sde_types (data/schema/combined-schema-reference.json#/tables/types)");
+export const StructureOrdersRowSchema: z.ZodType<StructureOrdersRow> = z.object({
+  structure_id: z.number().int().describe("Column public.structure_orders.structure_id – data/schema/combined-schema-reference.json#/tables/structureOrders"),
+  order_id: z.number().int().describe("Column public.structure_orders.order_id – data/schema/combined-schema-reference.json#/tables/structureOrders"),
+  type_id: z.number().int().describe("Column public.structure_orders.type_id – data/schema/combined-schema-reference.json#/tables/structureOrders"),
+  is_buy_order: z.boolean().describe("Column public.structure_orders.is_buy_order – data/schema/combined-schema-reference.json#/tables/structureOrders"),
+  price: z.string().describe("Column public.structure_orders.price – data/schema/combined-schema-reference.json#/tables/structureOrders"),
+  volume_remain: z.number().int().describe("Column public.structure_orders.volume_remain – data/schema/combined-schema-reference.json#/tables/structureOrders"),
+  issued_at: z.string().describe("Column public.structure_orders.issued_at – data/schema/combined-schema-reference.json#/tables/structureOrders"),
+  last_updated_at: z.string().describe("Column public.structure_orders.last_updated_at – data/schema/combined-schema-reference.json#/tables/structureOrders"),
+}).strict().describe("public.structure_orders (data/schema/combined-schema-reference.json#/tables/structureOrders)");
 
 export const manifestSchemas = {
+  item_prices_fact: ItemPricesFactRowSchema,
+  market_history_refresh_cache: MarketHistoryRefreshCacheRowSchema,
   market_latest_stats: MarketLatestStatsRowSchema,
   market_price_history: MarketPriceHistoryRowSchema,
   sde_categories: SdeCategoriesRowSchema,
@@ -120,5 +144,6 @@ export const manifestSchemas = {
   sde_master_materials: SdeMasterMaterialsRowSchema,
   sde_master_products: SdeMasterProductsRowSchema,
   sde_meta_groups: SdeMetaGroupsRowSchema,
-  sde_types: SdeTypesRowSchema
+  sde_types: SdeTypesRowSchema,
+  structure_orders: StructureOrdersRowSchema
 } as const;

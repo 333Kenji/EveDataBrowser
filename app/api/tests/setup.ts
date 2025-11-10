@@ -55,6 +55,7 @@ const buildDefaultTaxonomyResponse = () => ({
     total: 1
   },
   cache: {
+    scope: "public",
     maxAgeSeconds: 3600,
     staleWhileRevalidateSeconds: 120,
     generatedAt: new Date("2025-10-13T10:00:00Z")
@@ -122,6 +123,7 @@ const buildDefaultItemDetailResponse = () => ({
     ]
   },
   cache: {
+    scope: "public",
     maxAgeSeconds: 3600,
     staleWhileRevalidateSeconds: 120,
     generatedAt: new Date("2025-10-13T10:05:00Z")
@@ -151,6 +153,7 @@ const buildDefaultMarketHistoryResponse = () => ({
     }
   ],
   cache: {
+    scope: "public",
     maxAgeSeconds: 300,
     staleWhileRevalidateSeconds: 120,
     generatedAt: new Date("2025-10-13T10:10:00Z")
@@ -171,6 +174,7 @@ const buildDefaultMarketLatestResponse = () => ({
     updatedAt: "2025-10-12T19:05:00.000Z"
   },
   cache: {
+    scope: "public",
     maxAgeSeconds: 300,
     staleWhileRevalidateSeconds: 120,
     generatedAt: new Date("2025-10-13T10:12:00Z")

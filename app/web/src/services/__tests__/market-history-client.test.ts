@@ -43,9 +43,13 @@ const historyPayload = {
       lastIngestedAt: '2025-10-13T08:00:00.000Z',
     },
   ],
-  meta: {
-    schemaHash: 'history-hash',
+  cache: {
+    scope: 'public',
+    maxAgeSeconds: 300,
+    staleWhileRevalidateSeconds: 120,
+    generatedAt: '2025-10-13T10:10:00.000Z',
   },
+  schemaHash: 'history-hash',
 };
 
 const snapshotPayload = {
@@ -60,9 +64,14 @@ const snapshotPayload = {
     source: 'postgres',
     updatedAt: '2025-10-13T08:05:00.000Z',
   },
-  meta: {
-    schemaHash: 'latest-hash',
   },
+  cache: {
+    scope: 'public',
+    maxAgeSeconds: 300,
+    staleWhileRevalidateSeconds: 120,
+    generatedAt: '2025-10-13T10:12:00.000Z',
+  },
+  schemaHash: 'latest-hash',
 };
 
 afterEach(() => {
@@ -94,6 +103,13 @@ describe('fetchMarketHistory', () => {
     expect(result.snapshot).toEqual(snapshotPayload.data);
     expect(result.typeId).toBe(603);
     expect(result.regionId).toBe(10000002);
+    expect(result.cache).toEqual({
+      scope: 'public',
+      maxAgeSeconds: 300,
+      staleWhileRevalidateSeconds: 120,
+      generatedAt: '2025-10-13T10:10:00.000Z',
+    });
+    expect(result.schemaHash).toBe('latest-hash');
     expect(result.latencyMs).toBeGreaterThanOrEqual(0);
     expect(result.days.map((bucket) => bucket.bucketStart)).toEqual([
       '2025-10-12T00:00:00.000Z',
@@ -116,8 +132,12 @@ describe('fetchMarketHistory', () => {
       ok: false,
       status: 404,
       json: async () => ({
-        meta: {
-          schemaHash: 'not-found-hash',
+        schemaHash: 'not-found-hash',
+        cache: {
+          scope: 'public',
+          maxAgeSeconds: 300,
+          staleWhileRevalidateSeconds: 120,
+          generatedAt: '2025-10-13T10:15:00.000Z',
         },
       }),
     });
@@ -130,6 +150,8 @@ describe('fetchMarketHistory', () => {
     expect(result.days).toEqual([]);
     expect(result.snapshot).toBeUndefined();
     expect(result.dataVersion).toBe('not-found-hash');
+    expect(result.schemaHash).toBe('not-found-hash');
+    expect(result.cache.generatedAt).toBe('2025-10-13T10:15:00.000Z');
     expect(fetchMock).toHaveBeenCalledWith(
       'https://primary.test/v1/market/history?typeId=603&regionId=10000002&limit=90&order=desc&refresh=1',
       { headers: { Accept: 'application/json' } },

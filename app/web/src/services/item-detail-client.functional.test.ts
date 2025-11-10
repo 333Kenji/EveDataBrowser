@@ -93,7 +93,7 @@ describe('item-detail-client', () => {
     );
   });
 
-  it('marks the response as partial when description or materials are missing', async () => {
+  it('treats responses as complete even when description or materials are missing', async () => {
     const payload = buildPayload({ description: null, materials: [] });
 
     const fetchMock = vi.fn(async () => ({
@@ -107,7 +107,7 @@ describe('item-detail-client', () => {
 
     const result = await fetchItemDetail('12003');
 
-    expect(result.isPartial).toBe(true);
+    expect(result.isPartial).toBe(false);
     expect(result.dataVersion).toBe('Mon, 13 Oct 2025 15:45:00 GMT');
   });
 

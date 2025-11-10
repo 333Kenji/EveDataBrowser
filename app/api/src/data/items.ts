@@ -65,6 +65,7 @@ export interface ItemMarketGroupPathNode {
 }
 
 const DEFAULT_CACHE: CacheEnvelope = {
+  scope: "public",
   maxAgeSeconds: 3600,
   staleWhileRevalidateSeconds: 120,
   generatedAt: new Date(0)

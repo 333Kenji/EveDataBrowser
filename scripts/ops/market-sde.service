@@ -1,0 +1,16 @@
+[Unit]
+Description=EDB Market Eligible View Refresh
+After=network-online.target
+Requires=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/projects/EVEDataBrowser
+EnvironmentFile=/etc/edb/market.env
+ExecStart=/usr/bin/env npm run market:eligible:refresh
+Nice=5
+StandardOutput=journal
+StandardError=inherit
+
+[Install]
+WantedBy=multi-user.target

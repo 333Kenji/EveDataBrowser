@@ -5,6 +5,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline";
 import { Pool } from "pg";
 import { appendMarketHistory, sortBucketsByDate, type MarketHistoryBucket } from "./market-history-ingestion.js";
+import { RequestLimiter } from "./request-limiter.js";
 
 interface CliOptions {
   regionId: number;
@@ -14,6 +15,7 @@ interface CliOptions {
   typesFrom: string | null;
   dryRun: boolean;
   fixturePath: string | null;
+  ignoreCache: boolean;
 }
 
 interface EsiHistoryEntry {
@@ -50,7 +52,7 @@ interface EsiHistoryResponse {
   errorLimit: ErrorLimitHeaders;
 }
 
-type IngestionStatus = "ingested" | "up-to-date" | "dry-run" | "error";
+type IngestionStatus = "ingested" | "up-to-date" | "dry-run" | "cache-valid" | "error";
 
 interface IngestionSummaryEntry {
   typeId: number;
@@ -94,6 +96,7 @@ const WORKSPACE_ROOT = resolve(MODULE_DIR, "../../../../");
 const INGESTION_LOG_DIR = resolve(WORKSPACE_ROOT, "logs", "ingestion");
 const INGESTION_FAILURE_ARCHIVE_DIR = resolve(INGESTION_LOG_DIR, "archive");
 const INGESTION_FAILURE_LATEST_PATH = resolve(INGESTION_LOG_DIR, "latest-failures.json");
+const INGESTION_METRICS_PATH = resolve(INGESTION_LOG_DIR, "history-metrics.json");
 
 const RATE_LIMIT_REMAINING_THRESHOLD = parsePositiveInt(process.env.MARKET_INGEST_RATE_THRESHOLD, 25);
 const RATE_LIMIT_SLEEP_MS = parsePositiveInt(process.env.MARKET_INGEST_RATE_SLEEP_MS, 2000);
@@ -102,6 +105,18 @@ const ERROR_LIMIT_SLEEP_MS = parsePositiveInt(process.env.MARKET_INGEST_ERROR_SL
 const RETRY_BASE_DELAY_MS = parsePositiveInt(process.env.MARKET_INGEST_RETRY_BASE_MS, 3000);
 const MAX_FETCH_ATTEMPTS = parsePositiveInt(process.env.MARKET_INGEST_MAX_ATTEMPTS, 5);
 const RETRY_JITTER_RATIO = parseRatio(process.env.MARKET_INGEST_RETRY_JITTER_RATIO, 0.2);
+const REQUEST_LIMITER_CONCURRENCY = parsePositiveInt(process.env.MARKET_INGEST_CONCURRENCY, 6);
+const REQUEST_LIMITER_MAX_CONCURRENCY = parsePositiveInt(
+  process.env.MARKET_INGEST_MAX_CONCURRENCY,
+  Math.max(REQUEST_LIMITER_CONCURRENCY, 8)
+);
+const requestLimiter = new RequestLimiter({
+  initialConcurrency: REQUEST_LIMITER_CONCURRENCY,
+  maxConcurrency: REQUEST_LIMITER_MAX_CONCURRENCY,
+  minConcurrency: 1
+});
+const REFRESH_CACHE_WINDOW_MINUTES = parsePositiveInt(process.env.MARKET_HISTORY_REFRESH_WINDOW_MINUTES, 180);
+const limiterStats = { rateDelayMs: 0, errorDelayMs: 0 };
 
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
@@ -111,7 +126,8 @@ function parseArgs(argv: string[]): CliOptions {
     typeLimit: null,
     typesFrom: null,
     dryRun: false,
-    fixturePath: null
+    fixturePath: null,
+    ignoreCache: false
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -179,6 +195,11 @@ function parseArgs(argv: string[]): CliOptions {
       case "--dry-run":
       case "--dryRun": {
         options.dryRun = true;
+        break;
+      }
+      case "--ignore-cache":
+      case "--ignoreCache": {
+        options.ignoreCache = true;
         break;
       }
       default:
@@ -329,6 +350,29 @@ async function persistFailureReport(entries: IngestionSummaryEntry[], context: F
   await writeFile(archivePath, `${JSON.stringify(payload, null, 2)}\n`, { encoding: "utf8" });
 }
 
+async function persistHistoryMetrics(
+  summary: IngestionSummaryEntry[],
+  context: { regionId: number; totals: { inserted: number; skipped: number; missing: number; errors: number }; durationMs: number }
+): Promise<void> {
+  await mkdir(INGESTION_LOG_DIR, { recursive: true });
+  const payload = {
+    generatedAt: new Date().toISOString(),
+    regionId: context.regionId,
+    totals: context.totals,
+    durationMs: context.durationMs,
+    cacheHits: summary.filter((entry) => entry.status === "cache-valid").length,
+    ingested: summary.filter((entry) => entry.status === "ingested").length,
+    upToDate: summary.filter((entry) => entry.status === "up-to-date").length,
+    dryRun: summary.filter((entry) => entry.status === "dry-run").length,
+    errors: summary.filter((entry) => entry.status === "error").length,
+    limiter: {
+      rateDelayMs: limiterStats.rateDelayMs,
+      errorDelayMs: limiterStats.errorDelayMs
+    }
+  };
+  await writeFile(INGESTION_METRICS_PATH, `${JSON.stringify(payload, null, 2)}\n`, { encoding: "utf8" });
+}
+
 function buildProgressLine(context: ProgressContext): string {
   const percentage = context.total > 0
     ? formatPercentage((context.processed / context.total) * 100)
@@ -381,9 +425,8 @@ async function fetchEligibleTypeIds(pool: Pool, limit: number | null): Promise<n
   const resolvedLimit = typeof limit === "number" && Number.isFinite(limit) && limit > 0 ? limit : null;
   const limitClause = resolvedLimit ? "LIMIT $1" : "";
   const sql = `
-    SELECT DISTINCT type_id
-    FROM sde_master.sde_types
-    WHERE type_id IS NOT NULL AND published = true AND market_group_id IS NOT NULL
+    SELECT type_id
+    FROM public.market_eligible_types_union
     ORDER BY type_id
     ${limitClause};
   `;
@@ -571,6 +614,43 @@ async function loadFixture(path: string): Promise<Record<number, MarketHistoryBu
   return normalized;
 }
 
+async function readRefreshCacheEntry(pool: Pool, typeId: number, regionId: number): Promise<Date | null> {
+  const result = await pool.query<{ cached_until: Date | null }>(
+    "SELECT cached_until FROM market_history_refresh_cache WHERE type_id = $1 AND region_id = $2 LIMIT 1",
+    [typeId, regionId]
+  );
+  const value = result.rows[0]?.cached_until;
+  if (!value) {
+    return null;
+  }
+  return value instanceof Date ? value : new Date(value);
+}
+
+async function upsertRefreshCacheEntry(pool: Pool, typeId: number, regionId: number, cachedUntil: Date, checkedAt: Date): Promise<void> {
+  await pool.query(
+    `
+      INSERT INTO market_history_refresh_cache (type_id, region_id, cached_until, last_checked_at)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT (type_id, region_id)
+      DO UPDATE
+        SET cached_until = GREATEST(market_history_refresh_cache.cached_until, EXCLUDED.cached_until),
+            last_checked_at = EXCLUDED.last_checked_at;
+    `,
+    [typeId, regionId, cachedUntil.toISOString(), checkedAt.toISOString()]
+  );
+}
+
+function resolveCachedUntil(cache: CacheHeaders, fallbackWindowMinutes: number): Date {
+  if (cache.expires) {
+    const expires = new Date(cache.expires);
+    if (!Number.isNaN(expires.getTime())) {
+      return expires;
+    }
+  }
+  const windowMs = Math.max(1, fallbackWindowMinutes) * 60 * 1000;
+  return new Date(Date.now() + windowMs);
+}
+
 async function fetchExistingBucketDates(
   pool: Pool,
   typeId: number,
@@ -592,82 +672,85 @@ async function fetchExistingBucketDates(
   return new Set(result.rows.map((row) => row.bucket_date));
 }
 
-async function fetchHistoryFromEsi(regionId: number, typeId: number): Promise<EsiHistoryResponse> {
+async function fetchHistoryFromEsi(regionId: number, typeId: number, limiter: RequestLimiter): Promise<EsiHistoryResponse> {
   const url = new URL(`https://esi.evetech.net/latest/markets/${regionId}/history/`);
   url.searchParams.set("type_id", String(typeId));
 
-  let attempt = 0;
-  let lastError: unknown = null;
+  return limiter.schedule(async () => {
+    let attempt = 0;
+    let lastError: unknown = null;
 
-  while (attempt < MAX_FETCH_ATTEMPTS) {
-    attempt += 1;
-    try {
-      const response = await fetch(url, {
-        headers: {
-          "Accept": "application/json",
-          "User-Agent": "evedatabrowser-market-ingestion/0.1"
-        }
-      });
+    while (attempt < MAX_FETCH_ATTEMPTS) {
+      attempt += 1;
+      try {
+        const response = await fetch(url, {
+          headers: {
+            "Accept": "application/json",
+            "User-Agent": "evedatabrowser-market-ingestion/0.1"
+          }
+        });
+        limiter.adjustFromHeaders(response.headers);
 
-      if (response.status === 429) {
-        const retryAfterSeconds = parseHeaderInt(response.headers.get("retry-after"));
-        const delayMs = (retryAfterSeconds ?? attempt * 2) * 1000;
-        console.warn(`rate-limit hit for type=${typeId}; retrying in ${delayMs}ms (attempt ${attempt}/${MAX_FETCH_ATTEMPTS})`);
-        await sleep(delayMs);
-        continue;
-      }
-
-      if (!response.ok) {
-        if (response.status >= 500 && attempt < MAX_FETCH_ATTEMPTS) {
-          const backoff = calculateBackoffDelay(attempt);
-          console.warn(`Transient ESI error ${response.status} for type=${typeId}; retrying in ${backoff}ms`);
-          await sleep(backoff);
+        if (response.status === 429) {
+          const retryAfterSeconds = parseHeaderInt(response.headers.get("retry-after"));
+          const delayMs = (retryAfterSeconds ?? attempt * 2) * 1000;
+          console.warn(`rate-limit hit for type=${typeId}; retrying in ${delayMs}ms (attempt ${attempt}/${MAX_FETCH_ATTEMPTS})`);
+          await sleep(delayMs);
           continue;
         }
-        const message = await response.text();
-        throw new Error(`ESI request failed for type ${typeId}: ${response.status} ${response.statusText}${message ? ` - ${message}` : ""}`);
+
+        if (!response.ok) {
+          if (response.status >= 500 && attempt < MAX_FETCH_ATTEMPTS) {
+            const backoff = calculateBackoffDelay(attempt);
+            console.warn(`Transient ESI error ${response.status} for type=${typeId}; retrying in ${backoff}ms`);
+            await sleep(backoff);
+            continue;
+          }
+          const message = await response.text();
+          throw new Error(`ESI request failed for type ${typeId}: ${response.status} ${response.statusText}${message ? ` - ${message}` : ""}`);
+        }
+
+        const payload = (await response.json()) as EsiHistoryEntry[];
+        const cache: CacheHeaders = {
+          expires: response.headers.get("expires"),
+          lastModified: response.headers.get("last-modified"),
+          etag: response.headers.get("etag")
+        };
+        const rateLimit: RateLimitHeaders = {
+          group: response.headers.get("x-ratelimit-group"),
+          limit: response.headers.get("x-ratelimit-limit"),
+          remaining: parseHeaderInt(response.headers.get("x-ratelimit-remaining")),
+          used: parseHeaderInt(response.headers.get("x-ratelimit-used"))
+        };
+        const errorLimit: ErrorLimitHeaders = {
+          remain: parseHeaderInt(response.headers.get("x-esi-error-limit-remain")),
+          reset: parseHeaderInt(response.headers.get("x-esi-error-limit-reset"))
+        };
+
+        const buckets = payload.map((entry) => ({
+          date: entry.date,
+          average: entry.average,
+          highest: entry.highest,
+          lowest: entry.lowest,
+          volume: entry.volume,
+          orderCount: entry.order_count ?? null,
+          median: null
+        } satisfies MarketHistoryBucket));
+
+        return { buckets, cache, rateLimit, errorLimit };
+      } catch (error) {
+        lastError = error;
+        if (attempt >= MAX_FETCH_ATTEMPTS) {
+          break;
+        }
+        const backoff = calculateBackoffDelay(attempt);
+        console.warn(`Error fetching type=${typeId}: ${String(error)}; retrying in ${backoff}ms (attempt ${attempt}/${MAX_FETCH_ATTEMPTS})`);
+        await sleep(backoff);
       }
-
-      const payload = (await response.json()) as EsiHistoryEntry[];
-      const cache: CacheHeaders = {
-        expires: response.headers.get("expires"),
-        lastModified: response.headers.get("last-modified"),
-        etag: response.headers.get("etag")
-      };
-      const rateLimit: RateLimitHeaders = {
-        group: response.headers.get("x-ratelimit-group"),
-        limit: response.headers.get("x-ratelimit-limit"),
-        remaining: parseHeaderInt(response.headers.get("x-ratelimit-remaining")),
-        used: parseHeaderInt(response.headers.get("x-ratelimit-used"))
-      };
-      const errorLimit: ErrorLimitHeaders = {
-        remain: parseHeaderInt(response.headers.get("x-esi-error-limit-remain")),
-        reset: parseHeaderInt(response.headers.get("x-esi-error-limit-reset"))
-      };
-
-      const buckets = payload.map((entry) => ({
-        date: entry.date,
-        average: entry.average,
-        highest: entry.highest,
-        lowest: entry.lowest,
-        volume: entry.volume,
-        orderCount: entry.order_count ?? null,
-        median: null
-      } satisfies MarketHistoryBucket));
-
-      return { buckets, cache, rateLimit, errorLimit };
-    } catch (error) {
-      lastError = error;
-      if (attempt >= MAX_FETCH_ATTEMPTS) {
-        break;
-      }
-  const backoff = calculateBackoffDelay(attempt);
-  console.warn(`Error fetching type=${typeId}: ${String(error)}; retrying in ${backoff}ms (attempt ${attempt}/${MAX_FETCH_ATTEMPTS})`);
-  await sleep(backoff);
     }
-  }
 
-  throw lastError instanceof Error ? lastError : new Error(String(lastError));
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  });
 }
 
 async function applyAdaptiveThrottling(
@@ -680,12 +763,14 @@ async function applyAdaptiveThrottling(
     const multiplier = Math.max(RATE_LIMIT_REMAINING_THRESHOLD - rateLimit.remaining + 1, 1);
     const delay = RATE_LIMIT_SLEEP_MS * multiplier;
     console.info(`rate-limit cushion low (remaining=${rateLimit.remaining}) for type=${typeId}; pausing ${delay}ms`);
+    limiterStats.rateDelayMs += delay;
     await sleepFn(delay);
   }
 
   if (errorLimit.remain !== null && errorLimit.remain <= ERROR_LIMIT_REMAINING_THRESHOLD) {
     const delay = ERROR_LIMIT_SLEEP_MS;
     console.warn(`error-limit cushion low (remain=${errorLimit.remain}) for type=${typeId}; pausing ${delay}ms`);
+    limiterStats.errorDelayMs += delay;
     await sleepFn(delay);
   }
 }
@@ -695,6 +780,8 @@ async function run(): Promise<void> {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL });
   const summary: IngestionSummaryEntry[] = [];
   const startedAt = Date.now();
+  limiterStats.rateDelayMs = 0;
+  limiterStats.errorDelayMs = 0;
 
   try {
     let combinedTypeIds: number[] = [...options.typeIds];
@@ -738,6 +825,28 @@ async function run(): Promise<void> {
       const typeId = resolvedTypeIds[index];
       const typeStartedAt = Date.now();
       try {
+        const cachedUntil = options.ignoreCache
+          ? null
+          : await readRefreshCacheEntry(pool, typeId, options.regionId);
+        if (!options.ignoreCache && cachedUntil && cachedUntil.getTime() > Date.now()) {
+          await upsertRefreshCacheEntry(pool, typeId, options.regionId, cachedUntil, new Date());
+          summary.push({
+            typeId,
+            source: "cache",
+            attempted: 0,
+            missing: 0,
+            inserted: 0,
+            skipped: 0,
+            existing: 0,
+            latest: null,
+            cache: createEmptyCacheHeaders(),
+            rateLimit: createEmptyRateLimitHeaders(),
+            errorLimit: createEmptyErrorLimitHeaders(),
+            status: "cache-valid",
+            durationMs: 0
+          });
+          continue;
+        }
         const existingDates = await fetchExistingBucketDates(pool, typeId, options.regionId, cutoff);
 
         const fixtureBuckets = fixtureMap?.[typeId];
@@ -753,7 +862,7 @@ async function run(): Promise<void> {
           };
           source = "fixture";
         } else {
-          fetchResult = await fetchHistoryFromEsi(options.regionId, typeId);
+          fetchResult = await fetchHistoryFromEsi(options.regionId, typeId, requestLimiter);
           source = "esi";
         }
 
@@ -817,6 +926,8 @@ async function run(): Promise<void> {
 
         writeProgressLine(progressLine, { final: processed === totalTypes });
 
+        const cachedUntilTarget = resolveCachedUntil(fetchResult.cache, REFRESH_CACHE_WINDOW_MINUTES);
+
         summary.push({
           typeId,
           source,
@@ -833,6 +944,9 @@ async function run(): Promise<void> {
           durationMs,
           ...(options.dryRun ? { message: "dry run" } : {})
         });
+
+        const checkedAt = new Date();
+        await upsertRefreshCacheEntry(pool, typeId, options.regionId, cachedUntilTarget, checkedAt);
 
         if (source === "esi") {
           await applyAdaptiveThrottling(fetchResult.rateLimit, fetchResult.errorLimit, typeId);
@@ -892,6 +1006,12 @@ async function run(): Promise<void> {
       completedAt: new Date(completedAt).toISOString(),
       entries: summary
     }, null, 2));
+
+    await persistHistoryMetrics(summary, {
+      regionId: options.regionId,
+      totals,
+      durationMs: totalDurationMs
+    });
   } finally {
     await pool.end();
   }

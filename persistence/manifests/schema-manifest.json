@@ -112,12 +112,52 @@
         { "name": "type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
         { "name": "region_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
         { "name": "last_seen_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false },
-  { "name": "snapshot_low", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
-  { "name": "snapshot_high", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
-  { "name": "snapshot_median", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
-  { "name": "snapshot_volume", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "snapshot_low", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "snapshot_high", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "snapshot_median", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
+        { "name": "snapshot_volume", "sqlType": "DOUBLE PRECISION", "nullable": true, "primaryKey": false },
         { "name": "source", "sqlType": "TEXT", "nullable": false, "primaryKey": false },
         { "name": "updated_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "ItemPricesFact",
+      "tableName": "item_prices_fact",
+      "schema": "public",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/itemPricesFact",
+      "columns": [
+        { "name": "type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": true },
+        { "name": "average", "sqlType": "NUMERIC", "nullable": true, "primaryKey": false },
+        { "name": "adjusted", "sqlType": "NUMERIC", "nullable": true, "primaryKey": false },
+        { "name": "updated_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "MarketHistoryRefreshCache",
+      "tableName": "market_history_refresh_cache",
+      "schema": "public",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/marketHistoryRefreshCache",
+      "columns": [
+        { "name": "type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "region_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "cached_until", "sqlType": "TIMESTAMPTZ", "nullable": true, "primaryKey": false },
+        { "name": "last_checked_at", "sqlType": "TIMESTAMPTZ", "nullable": true, "primaryKey": false }
+      ]
+    },
+    {
+      "entity": "StructureOrders",
+      "tableName": "structure_orders",
+      "schema": "public",
+      "schemaPath": "data/schema/combined-schema-reference.json#/tables/structureOrders",
+      "columns": [
+        { "name": "structure_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "order_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "type_id", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "is_buy_order", "sqlType": "BOOLEAN", "nullable": false, "primaryKey": false },
+        { "name": "price", "sqlType": "NUMERIC", "nullable": false, "primaryKey": false },
+        { "name": "volume_remain", "sqlType": "BIGINT", "nullable": false, "primaryKey": false },
+        { "name": "issued_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false },
+        { "name": "last_updated_at", "sqlType": "TIMESTAMPTZ", "nullable": false, "primaryKey": false }
       ]
     },
     {

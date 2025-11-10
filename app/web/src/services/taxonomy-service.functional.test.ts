@@ -333,7 +333,6 @@ describe('taxonomy-service functional behaviour', () => {
     }
 
     const retainedTypes = flattenTypes(response.categories[0]?.groups ?? []);
-    expect(retainedTypes).toHaveLength(1);
-    expect(retainedTypes[0]?.name).toBe('Published blueprint');
+    expect(retainedTypes.map((type) => type.name)).toEqual(['Published blueprint', 'Non-manufactured']);
   });
 });

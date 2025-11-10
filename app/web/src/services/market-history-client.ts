@@ -3,34 +3,68 @@ import {
   MarketHistoryPointSchema,
   MarketLatestStatsSummarySchema,
   MARKET_HISTORY_DEFAULT_LIMIT,
+  CACHE_POLICY_DEFAULTS,
 } from '@evedatabrowser/contracts';
 import { buildApiUrl, resolveApiBases } from './api-base';
 
+const cacheEnvelopeSchema = z.object({
+  scope: z.enum(['public', 'private']),
+  maxAgeSeconds: z.number().int(),
+  staleWhileRevalidateSeconds: z.number().int(),
+  generatedAt: z.string(),
+});
+const partialCacheEnvelopeSchema = cacheEnvelopeSchema.partial();
+
 const historyResponseSchema = z.object({
   data: z.array(MarketHistoryPointSchema),
-  meta: z
-    .object({
-      schemaHash: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
+  cache: cacheEnvelopeSchema,
+  schemaHash: z.string(),
 });
 
 const latestResponseSchema = z.object({
   data: MarketLatestStatsSummarySchema,
-  meta: z
-    .object({
-      schemaHash: z.string().optional(),
-    })
-    .passthrough()
-    .optional(),
+  cache: cacheEnvelopeSchema,
+  schemaHash: z.string(),
 });
+
+type CacheEnvelope = z.infer<typeof cacheEnvelopeSchema>;
+
+interface CacheSummary {
+  scope: 'public' | 'private';
+  maxAgeSeconds: number;
+  staleWhileRevalidateSeconds: number;
+  generatedAt: string;
+}
+
+const MARKET_CACHE_DEFAULTS = CACHE_POLICY_DEFAULTS.market;
+
+function normalizeCacheEnvelope(input?: Partial<CacheEnvelope>): CacheSummary {
+  const fallbackGeneratedAt = new Date().toISOString();
+  const generatedAt = typeof input?.generatedAt === 'string'
+    ? new Date(input.generatedAt).toISOString()
+    : fallbackGeneratedAt;
+  const maxAge = Number.isFinite(input?.maxAgeSeconds)
+    ? Number(input!.maxAgeSeconds)
+    : MARKET_CACHE_DEFAULTS.maxAgeSeconds;
+  const staleWhileRevalidate = Number.isFinite(input?.staleWhileRevalidateSeconds)
+    ? Number(input!.staleWhileRevalidateSeconds)
+    : (MARKET_CACHE_DEFAULTS.staleWhileRevalidateSeconds ?? 0);
+  const scope = input?.scope === 'private' ? 'private' : 'public';
+  return {
+    scope,
+    maxAgeSeconds: maxAge,
+    staleWhileRevalidateSeconds: staleWhileRevalidate,
+    generatedAt,
+  };
+}
 
 export interface MarketHistoryApiResponse {
   typeId: number;
   regionId: number;
   days: z.infer<typeof MarketHistoryPointSchema>[];
   snapshot?: z.infer<typeof MarketLatestStatsSummarySchema>;
+  cache: CacheSummary;
+  schemaHash: string;
   dataVersion: string;
   latencyMs: number;
 }
@@ -76,10 +110,15 @@ export async function fetchMarketHistory(typeId: string, options: FetchMarketHis
 
       if (historyResponse.status === 404) {
         let schemaHash = 'not-found';
+        let cache = normalizeCacheEnvelope();
         try {
           const notFoundJson = await historyResponse.json();
-          if (notFoundJson?.meta?.schemaHash) {
-            schemaHash = String(notFoundJson.meta.schemaHash);
+          if (typeof notFoundJson?.schemaHash === 'string') {
+            schemaHash = notFoundJson.schemaHash;
+          }
+          const parsedCache = partialCacheEnvelopeSchema.safeParse(notFoundJson?.cache);
+          if (parsedCache.success) {
+            cache = normalizeCacheEnvelope(parsedCache.data);
           }
         } catch {
           // ignore JSON parsing issues on 404 responses
@@ -90,6 +129,8 @@ export async function fetchMarketHistory(typeId: string, options: FetchMarketHis
           regionId,
           days: [],
           snapshot: undefined,
+          cache,
+          schemaHash,
           dataVersion: schemaHash,
           latencyMs: Math.max(0, nowMs() - start),
         } satisfies MarketHistoryApiResponse;
@@ -101,6 +142,7 @@ export async function fetchMarketHistory(typeId: string, options: FetchMarketHis
       }
 
       const historyJson = historyResponseSchema.parse(await historyResponse.json());
+      const historyCache = normalizeCacheEnvelope(historyJson.cache);
 
       const sortedHistory = [...historyJson.data].sort((a, b) => {
         const aTime = Date.parse(a.bucketStart);
@@ -111,7 +153,7 @@ export async function fetchMarketHistory(typeId: string, options: FetchMarketHis
       });
 
       let snapshot;
-      let schemaHash = historyJson.meta?.schemaHash ?? 'unknown';
+      let schemaHash = historyJson.schemaHash ?? 'unknown';
 
       try {
         const latestUrl = buildApiUrl(
@@ -128,7 +170,7 @@ export async function fetchMarketHistory(typeId: string, options: FetchMarketHis
         if (latestResponse.ok) {
           const latestJson = latestResponseSchema.parse(await latestResponse.json());
           snapshot = latestJson.data;
-          schemaHash = latestJson.meta?.schemaHash ?? schemaHash;
+          schemaHash = latestJson.schemaHash ?? schemaHash;
         }
       } catch (snapshotError) {
         console.warn('[market-history] snapshot request failed', snapshotError);
@@ -139,6 +181,8 @@ export async function fetchMarketHistory(typeId: string, options: FetchMarketHis
         regionId,
   days: sortedHistory,
         snapshot,
+        cache: historyCache,
+        schemaHash,
         dataVersion: schemaHash,
         latencyMs: Math.max(0, nowMs() - start),
       } satisfies MarketHistoryApiResponse;

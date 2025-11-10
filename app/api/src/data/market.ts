@@ -46,6 +46,7 @@ const SCHEMA_HASH = typeof schemaManifest?.schemaHash === "string"
   : "unknown";
 
 const DEFAULT_CACHE: CacheEnvelope = {
+  scope: "public",
   maxAgeSeconds: 300,
   staleWhileRevalidateSeconds: 120,
   generatedAt: new Date(0),

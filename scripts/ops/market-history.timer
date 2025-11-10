@@ -1,0 +1,11 @@
+[Unit]
+Description=EDB Market History Ingest (Daily)
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+RandomizedDelaySec=600
+Unit=market-history.service
+
+[Install]
+WantedBy=timers.target

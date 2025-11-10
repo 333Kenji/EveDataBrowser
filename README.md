@@ -98,26 +98,27 @@ Design note: Indicators are derived client‑side; persisted data stays concise.
 
 1. Start services: `docker compose up -d`
 2. Confirm containers are healthy: `docker compose ps`
-3. (Optional) Backfill market data: `docker compose exec api npm run ingest:market:esi -- --days 90 --region 10000002`
-4. Verify API health from inside the container: `docker compose exec api curl -s http://localhost:3000/v1/health | jq`
-5. Open UI: http://localhost:5600/
-6. Run API tests: `docker compose exec api npm run test`
-7. Run Web tests: `docker compose exec web npm run test:all`
-8. Optional validation snapshot: `docker compose exec api sh -lc "cd /workspace && npm run bootstrap:validate"`
-9. Optional smoke workflow: `docker compose exec api sh -lc "cd /workspace && npm run smoke"`
+3. Import the latest SDE snapshot into Postgres: `docker compose exec api sh -lc "cd /workspace && npm run sde:import"`
+4. (Optional) Backfill market data: `docker compose exec api npm run ingest:market:esi -- --days 90 --region 10000002`
+5. Verify API health from inside the container: `docker compose exec api curl -s http://localhost:3000/v1/health | jq`
+6. Open UI: http://localhost:5600/
+7. Run API tests: `docker compose exec api npm run test`
+8. Run Web tests: `docker compose exec web npm run test:all`
+9. Optional validation snapshot: `docker compose exec api sh -lc "cd /workspace && npm run bootstrap:validate"`
+10. Optional smoke workflow: `docker compose exec api sh -lc "cd /workspace && npm run smoke"`
 
 Need additional container guidance or port overrides? See the retained ops notes in `docs/runbooks/OPS_RUNBOOK.md#deployment-monitoring-and-ingestion-schedules`.
 
-### Manual SDE ingest (runbook aligned)
+### SDE ingest (runbook aligned)
 
-Reuse the same commands documented in `docs/runbooks/INGESTION_PIPELINE.md#sde-staging-pipeline-manual-run`:
-
-1. Generate a manifest: `node scripts/bootstrap/generate-sde-manifest.mjs -i data/sde -o logs/staging-manifests`
-2. Ingest the manifest inside the API container:
-  ```bash
-  docker compose exec api sh -lc "cd /workspace && node scripts/bootstrap/ingest-sde-manifest.mjs --manifest logs/staging-manifests/<manifest>.json"
-  ```
-3. Let the materialization chain finish; verify row counts and manifest audit files per the runbook checklist.
+- Primary command: `docker compose exec api sh -lc "cd /workspace && npm run sde:import"`
+  - Automatically downloads the latest CCP-provided SDE archive if the cached ETag differs.
+  - Extracts `fsd/groups.yaml`, `fsd/marketGroups.yaml`, and `fsd/types.yaml`, then refreshes the `sde_master` tables and eligibility materialized views.
+- Optional flags (pass after `npm run sde:import --`):
+  - `--force` – always download the archive even if the cached copy is current.
+  - `--output-dir <path>` – change where the archive/extracted YAML files are stored (default `data/sde`).
+  - `--database-url <url>` – override the Postgres connection string.
+- After the script completes, spot-check counts: `SELECT COUNT(*) FROM sde_master.sde_types;` should match the latest SDE release.
 
 ### Targeted market refresh (runbook aligned)
 
@@ -270,5 +271,3 @@ Each can land without major refactors due to vertical isolation.
 ---
 
 <!-- End of README -->
-
-

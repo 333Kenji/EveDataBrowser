@@ -19,7 +19,9 @@ const envSchema = z.object({
   API_CACHE_ITEMS_STALE: z.coerce.number().int().nonnegative().optional(),
   API_CACHE_MARKET_MAX_AGE: z.coerce.number().int().nonnegative().optional(),
   API_CACHE_MARKET_STALE: z.coerce.number().int().nonnegative().optional(),
-  API_CORS_ALLOW_ORIGINS: z.string().optional()
+  API_CORS_ALLOW_ORIGINS: z.string().optional(),
+  FEATURE_STRUCTURE_ORDERS: z.coerce.boolean().optional(),
+  STRUCTURE_ORDER_STRUCTURE_IDS: z.string().optional()
 });
 
 const env = envSchema.parse(process.env);
@@ -68,6 +70,17 @@ function resolveCorsOrigins(value: string | undefined): true | string[] {
   return entries;
 }
 
+function parseStructureIds(value: string | undefined): number[] {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(",")
+    .map((entry) => Number.parseInt(entry.trim(), 10))
+    .filter((id) => Number.isFinite(id) && id > 0) as number[];
+}
+
 export const config = {
   database: {
     connectionString: buildConnectionString(),
@@ -91,6 +104,12 @@ export const config = {
       maxAge: toCacheValue(env.API_CACHE_MARKET_MAX_AGE, DEFAULT_CACHE_MARKET_MAX_AGE),
       staleWhileRevalidate: toCacheValue(env.API_CACHE_MARKET_STALE, DEFAULT_CACHE_MARKET_STALE)
     }
+  },
+  features: {
+    structureOrders: Boolean(env.FEATURE_STRUCTURE_ORDERS)
+  },
+  structureOrders: {
+    structures: parseStructureIds(env.STRUCTURE_ORDER_STRUCTURE_IDS)
   }
 } as const;
 

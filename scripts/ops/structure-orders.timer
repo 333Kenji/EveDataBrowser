@@ -1,0 +1,11 @@
+[Unit]
+Description=EDB Market Structure Orders Ingest Timer
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+RandomizedDelaySec=600
+Persistent=true
+Unit=structure-orders.service
+
+[Install]
+WantedBy=timers.target

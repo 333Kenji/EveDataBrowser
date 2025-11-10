@@ -60,7 +60,6 @@ app/api/node_modules/
 app/web/node_modules/
 app/web/dist/
 app/web/test-results/
-.specify/outputs/
 data/
 # Allow application source modules under app/api/src/data
 !app/api/src/data/

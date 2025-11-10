@@ -1,0 +1,10 @@
+[Unit]
+Description=EDB Market Prices Refresh Timer
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+Unit=market-prices.service
+
+[Install]
+WantedBy=timers.target

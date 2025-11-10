@@ -51,7 +51,9 @@ export interface TaxonomySearchOptions extends TaxonomySearchParams {
   cache?: CacheOptions;
 }
 
+const MAX_SEARCH_LIMIT = 20000;
 const DEFAULT_CACHE: CacheEnvelope = {
+  scope: "public",
   maxAgeSeconds: 3600,
   staleWhileRevalidateSeconds: 120,
   generatedAt: new Date(0)
@@ -61,7 +63,7 @@ function clampLimit(limit: number | undefined): number {
   if (!Number.isFinite(limit) || limit === undefined || limit === null) {
     return 25;
   }
-  return Math.min(Math.max(Math.trunc(limit), 1), 100);
+  return Math.min(Math.max(Math.trunc(limit), 1), MAX_SEARCH_LIMIT);
 }
 
 function clampOffset(offset: number | undefined): number {

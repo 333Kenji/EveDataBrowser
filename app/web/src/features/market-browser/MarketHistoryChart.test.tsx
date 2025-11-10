@@ -21,15 +21,22 @@ const baseHistoryPoint = (overrides: Partial<Record<string, any>> = {}) => ({
   ...overrides,
 });
 
-const buildHistoryResponse = (days: Array<Partial<Record<string, any>>> = []) => ({
+const buildHistoryResponse = (days: Array<Partial<Record<string, any>>> = [], cacheOverrides: Partial<Record<string, any>> = {}) => ({
   data: days.map((overrides, index) => baseHistoryPoint({
     bucketStart: `2025-09-${30 + index}T00:00:00Z`,
     ...overrides,
   })),
-  meta: { schemaHash: 'test-history-hash' },
+  cache: {
+    scope: 'public',
+    maxAgeSeconds: 300,
+    staleWhileRevalidateSeconds: 120,
+    generatedAt: '2025-10-13T10:10:00.000Z',
+    ...cacheOverrides,
+  },
+  schemaHash: 'test-history-hash',
 });
 
-const buildSnapshotResponse = (overrides: Partial<Record<string, any>> = {}) => ({
+const buildSnapshotResponse = (overrides: Partial<Record<string, any>> = {}, cacheOverrides: Partial<Record<string, any>> = {}) => ({
   data: {
     typeId: 123,
     regionId: DEFAULT_REGION_ID,
@@ -42,7 +49,24 @@ const buildSnapshotResponse = (overrides: Partial<Record<string, any>> = {}) => 
     updatedAt: '2025-10-01T00:00:00Z',
     ...overrides,
   },
-  meta: { schemaHash: 'test-latest-hash' },
+  cache: {
+    scope: 'public',
+    maxAgeSeconds: 300,
+    staleWhileRevalidateSeconds: 120,
+    generatedAt: '2025-10-13T10:12:00.000Z',
+    ...cacheOverrides,
+  },
+  schemaHash: 'test-latest-hash',
+});
+
+const buildNotFoundResponse = (schemaHash = 'not-found') => ({
+  schemaHash,
+  cache: {
+    scope: 'public',
+    maxAgeSeconds: 300,
+    staleWhileRevalidateSeconds: 120,
+    generatedAt: '2025-10-13T10:20:00.000Z',
+  },
 });
 
 // Simple fetch mock infrastructure
@@ -82,7 +106,7 @@ describe('MarketHistoryChart', () => {
   it('renders empty state', async () => {
     setupFetchMock([
       { json: buildHistoryResponse([]) },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
     ]);
     const qc = new QueryClient();
     render(<QueryClientProvider client={qc}><MarketHistoryChart typeId="123" /></QueryClientProvider>);
@@ -108,19 +132,18 @@ describe('MarketHistoryChart', () => {
 
   it('treats 404 as empty (graceful) state', async () => {
     setupFetchMock([
-      { ok: false, error: 404, json: { meta: { schemaHash: '404-hash' } } },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse('404-hash') },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
     ]);
     const qc = new QueryClient();
     render(<QueryClientProvider client={qc}><MarketHistoryChart typeId="999999" /></QueryClientProvider>);
     expect(await screen.findByText(/No market history available yet/i)).toBeTruthy();
   });
 
-  it('retries with refresh when first empty and second has data', async () => {
-    vi.useFakeTimers();
+  it('allows manual refresh to load data after an empty first run', async () => {
     setupFetchMock([
       { json: buildHistoryResponse([]) },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
       {
         json: buildHistoryResponse([
           {
@@ -136,17 +159,19 @@ describe('MarketHistoryChart', () => {
       { json: buildSnapshotResponse({ snapshotLow: 9.5, snapshotHigh: 10.5, snapshotMedian: 10 }) },
     ]);
     const qc = new QueryClient();
-    try {
-      render(<QueryClientProvider client={qc}><MarketHistoryChart typeId="123" /></QueryClientProvider>);
-      await act(async () => {
-        vi.advanceTimersByTime(1600);
-      });
-      await waitFor(() => expect(screen.getByRole('button', { name: /Volume/i })).toBeTruthy());
-      // first attempt history + latest, second attempt history + latest
+    render(<QueryClientProvider client={qc}><MarketHistoryChart typeId="123" /></QueryClientProvider>);
+    await screen.findByText(/No market history available yet/i);
+    await waitFor(() => {
+      expect((global as any).fetch).toHaveBeenCalledTimes(2);
+    });
+    const refreshButton = screen.getByRole('button', { name: /Refresh/i });
+    await act(async () => {
+      refreshButton.click();
+    });
+    await waitFor(() => {
       expect((global as any).fetch).toHaveBeenCalledTimes(4);
-    } finally {
-      vi.useRealTimers();
-    }
+    });
+    await waitFor(() => expect(screen.getByRole('button', { name: /Volume/i })).toBeTruthy());
   });
 
   it('renders with data (snapshot markers optional)', async () => {
@@ -212,10 +237,7 @@ describe('MarketHistoryChart', () => {
 
     setupFetchMock([
       {
-        json: {
-          data: historyPoints.map((overrides) => baseHistoryPoint(overrides)),
-          meta: { schemaHash: 'utc-month-test' },
-        },
+        json: buildHistoryResponse(historyPoints),
       },
       {
         json: buildSnapshotResponse({
@@ -274,7 +296,7 @@ describe('MarketHistoryChart', () => {
           },
         ]),
       },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
     ]);
     const qc = new QueryClient();
     render(<QueryClientProvider client={qc}><MarketHistoryChart typeId="123" /></QueryClientProvider>);
@@ -307,7 +329,7 @@ describe('MarketHistoryChart', () => {
           },
         ]),
       },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
     ]);
     const qc = new QueryClient();
     render(<QueryClientProvider client={qc}><MarketHistoryChart typeId="123" /></QueryClientProvider>);
@@ -344,7 +366,7 @@ describe('MarketHistoryChart', () => {
           },
         ]),
       },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
     ]);
     const qc = new QueryClient();
     render(<QueryClientProvider client={qc}><MarketHistoryChart typeId="123" /></QueryClientProvider>);
@@ -378,7 +400,7 @@ describe('MarketHistoryChart', () => {
           },
         ]),
       },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
       {
         json: buildHistoryResponse([
           {
@@ -392,7 +414,7 @@ describe('MarketHistoryChart', () => {
           },
         ]),
       },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
     ]);
     const qc = new QueryClient();
     const { rerender } = render(<QueryClientProvider client={qc}><MarketHistoryChart typeId="123" /></QueryClientProvider>);
@@ -437,7 +459,7 @@ describe('MarketHistoryChart', () => {
     ]);
     setupFetchMock([
       { json: hydratedModel },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
     ]);
 
     const originalResizeObserver = (globalThis as any).ResizeObserver;
@@ -534,7 +556,7 @@ describe('MarketHistoryChart', () => {
     ]);
     setupFetchMock([
       { json: hydratedModel },
-      { ok: false, error: 404, json: { meta: {} } },
+      { ok: false, error: 404, json: async () => buildNotFoundResponse() },
     ]);
 
     const originalResizeObserver = (globalThis as any).ResizeObserver;
