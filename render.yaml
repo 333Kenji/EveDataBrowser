@@ -21,28 +21,20 @@ services:
       - key: API_CORS_ALLOW_ORIGINS
         value: "*"
       - key: API_CACHE_TAXONOMY_MAX_AGE
-        sync: false
         value: "3600"
       - key: API_CACHE_TAXONOMY_STALE
-        sync: false
         value: "120"
       - key: API_CACHE_ITEMS_MAX_AGE
-        sync: false
         value: "3600"
       - key: API_CACHE_ITEMS_STALE
-        sync: false
         value: "120"
       - key: API_CACHE_MARKET_MAX_AGE
-        sync: false
         value: "300"
       - key: API_CACHE_MARKET_STALE
-        sync: false
         value: "120"
       - key: FEATURE_STRUCTURE_ORDERS
-        sync: false
         value: "false"
       - key: STRUCTURE_ORDER_STRUCTURE_IDS
-        sync: false
         value: ""
 
   - type: web
