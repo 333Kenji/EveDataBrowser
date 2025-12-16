@@ -1,7 +1,7 @@
 databases:
   - name: eve-data-browser-db
-    # Render removed legacy starter Postgres plans; use standard (paid) or a current free tier if available.
-    plan: standard
+    # Render default for new databases per blueprint spec; adjust if your workspace supports another plan.
+    plan: basic-256mb
 
 services:
   - type: web
