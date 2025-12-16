@@ -1,0 +1,60 @@
+databases:
+  - name: eve-data-browser-db
+    plan: starter
+
+services:
+  - type: web
+    name: eve-data-browser-api
+    env: docker
+    plan: starter
+    repo: https://github.com/333Kenji/EveDataBrowser
+    branch: main
+    rootDir: app/api
+    dockerfilePath: app/api/Dockerfile
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eve-data-browser-db
+          property: connectionString
+      - key: API_CORS_ALLOW_ORIGINS
+        value: "*"
+      - key: API_CACHE_TAXONOMY_MAX_AGE
+        sync: false
+        value: "3600"
+      - key: API_CACHE_TAXONOMY_STALE
+        sync: false
+        value: "120"
+      - key: API_CACHE_ITEMS_MAX_AGE
+        sync: false
+        value: "3600"
+      - key: API_CACHE_ITEMS_STALE
+        sync: false
+        value: "120"
+      - key: API_CACHE_MARKET_MAX_AGE
+        sync: false
+        value: "300"
+      - key: API_CACHE_MARKET_STALE
+        sync: false
+        value: "120"
+      - key: FEATURE_STRUCTURE_ORDERS
+        sync: false
+        value: "false"
+      - key: STRUCTURE_ORDER_STRUCTURE_IDS
+        sync: false
+        value: ""
+
+  - type: web
+    name: eve-data-browser-web
+    env: docker
+    plan: starter
+    repo: https://github.com/333Kenji/EveDataBrowser
+    branch: main
+    rootDir: app/web
+    dockerfilePath: app/web/Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: VITE_API_BASE_URL
+        # Replace after first deploy with the API's public URL, e.g., https://eve-data-browser-api.onrender.com
+        value: https://REPLACE_WITH_API_URL
