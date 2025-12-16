@@ -1,6 +1,7 @@
 databases:
   - name: eve-data-browser-db
-    plan: starter
+    # Render removed legacy starter Postgres plans; use standard (paid) or a current free tier if available.
+    plan: standard
 
 services:
   - type: web
