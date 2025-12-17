@@ -3,7 +3,8 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 const SDE_BOOTSTRAP_FLAG = process.env.SDE_BOOTSTRAP_ON_START?.toLowerCase() === "true";
-const WORKSPACE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../");
+// dist/ops -> dist -> api -> app -> (workspace root)
+const WORKSPACE_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../");
 const SDE_SCRIPT = path.join(WORKSPACE_ROOT, "scripts/ingest/check-sde-latest.mjs");
 
 function runScript(command: string, args: string[]): Promise<void> {
