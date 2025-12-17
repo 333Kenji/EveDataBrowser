@@ -10,7 +10,6 @@ services:
     plan: free
     repo: https://github.com/333Kenji/EveDataBrowser
     branch: main
-    rootDir: app/api
     dockerfilePath: app/api/Dockerfile
     dockerContext: app/api
     healthCheckPath: /health
@@ -45,7 +44,6 @@ services:
     plan: free
     repo: https://github.com/333Kenji/EveDataBrowser
     branch: main
-    rootDir: app/web
     dockerfilePath: app/web/Dockerfile
     dockerContext: app/web
     autoDeploy: true
