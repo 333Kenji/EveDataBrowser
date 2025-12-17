@@ -6,6 +6,7 @@ WORKDIR /workspace
 # Copy workspace-level manifests for deterministic installs
 COPY package.json package-lock.json ./
 COPY packages/contracts ./packages/contracts
+COPY persistence ./persistence
 COPY app/api/package.json app/api/package-lock.json ./app/api/
 COPY app/api/tsconfig.json app/api/tsconfig.json
 COPY app/api/tsconfig.build.json app/api/tsconfig.build.json
