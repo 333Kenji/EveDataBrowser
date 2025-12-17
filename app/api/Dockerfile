@@ -29,6 +29,7 @@ ENV NODE_ENV=production
 COPY --from=base /workspace/app/api/dist ./app/api/dist
 COPY --from=base /workspace/app/api/node_modules ./app/api/node_modules
 COPY --from=base /workspace/app/api/package.json ./app/api/package.json
+COPY --from=base /workspace/packages/contracts ./packages/contracts
 COPY --from=base /workspace/persistence ./persistence
 
 EXPOSE 3000
