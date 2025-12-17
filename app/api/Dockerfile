@@ -5,14 +5,13 @@ WORKDIR /workspace
 
 # Copy workspace-level manifests for deterministic installs
 COPY package.json package-lock.json ./
-COPY packages/contracts/package.json packages/contracts/package-lock.json ./packages/contracts/
+COPY packages/contracts ./packages/contracts
 COPY app/api/package.json app/api/package-lock.json ./app/api/
 COPY app/api/tsconfig.json app/api/tsconfig.json
 COPY app/api/tsconfig.build.json app/api/tsconfig.build.json
 
-# Install contracts dependencies and build distributable
+# Install contracts dependencies and build distributable (source already copied)
 RUN npm --prefix packages/contracts ci
-COPY packages/contracts ./packages/contracts
 RUN npm --prefix packages/contracts run build
 
 # Install API dependencies (consumes built contracts package)
