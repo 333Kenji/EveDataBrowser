@@ -38,14 +38,16 @@ services:
       - key: STRUCTURE_ORDER_STRUCTURE_IDS
         value: ""
 
+  # Web as static site (free tier) instead of Docker container
   - type: web
     name: eve-data-browser-web
-    env: docker
-    plan: starter
+    env: static
+    plan: free
     repo: https://github.com/333Kenji/EveDataBrowser
     branch: main
     rootDir: app/web
-    dockerfilePath: app/web/Dockerfile
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
     autoDeploy: true
     envVars:
       - key: VITE_API_BASE_URL
