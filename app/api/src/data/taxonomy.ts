@@ -166,7 +166,7 @@ export async function searchTaxonomy(pool: Pool, options: TaxonomySearchOptions 
         SELECT jsonb_agg(
           jsonb_build_object(
             'marketGroupKey', mg.key,
-    };
+            'marketGroupId', mg.market_group_id,
             'name', mg.name,
             'parentGroupKey', mg.parent_group_id
           )
