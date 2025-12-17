@@ -20,7 +20,7 @@ services:
           name: eve-data-browser-db
           property: connectionString
       - key: API_CORS_ALLOW_ORIGINS
-        value: "*"
+        value: "https://eve-data-browser-web.onrender.com"
       - key: API_CACHE_TAXONOMY_MAX_AGE
         value: "3600"
       - key: API_CACHE_TAXONOMY_STALE
