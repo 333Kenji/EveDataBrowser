@@ -166,7 +166,7 @@ export async function searchTaxonomy(pool: Pool, options: TaxonomySearchOptions 
         SELECT jsonb_agg(
           jsonb_build_object(
             'marketGroupKey', mg.key,
-            'marketGroupId', mg.market_group_id,
+    };
             'name', mg.name,
             'parentGroupKey', mg.parent_group_id
           )
@@ -180,7 +180,7 @@ export async function searchTaxonomy(pool: Pool, options: TaxonomySearchOptions 
       OFFSET $${offsetIndex};
     `,
     values: [...values, limit, offset]
-  } as const;
+  };
 
   const countQuery = {
     name: "taxonomy:search-master-count:v1",
@@ -198,11 +198,11 @@ export async function searchTaxonomy(pool: Pool, options: TaxonomySearchOptions 
       ${whereClause};
     `,
     values
-  } as const;
+  };
 
   const [itemsResult, countResult] = await Promise.all([
-    pool.query(itemsQuery),
-    pool.query(countQuery)
+    pool.query(itemsQuery as any),
+    pool.query(countQuery as any)
   ]);
 
   const total = Number(countResult.rows[0]?.total ?? 0);

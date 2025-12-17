@@ -77,7 +77,7 @@ export async function refreshMarketPrices(
   pool: Pool,
   options: RefreshMarketPricesOptions = {}
 ): Promise<RefreshMarketPricesResult> {
-  const chunkSize = options.chunkSize ?? 400;
+  const chunkSize = Number(options.chunkSize ?? 400);
   const retryAttempts = options.retryAttempts ?? 5;
 
   const rows = await fetchPricesFromEsi(retryAttempts);

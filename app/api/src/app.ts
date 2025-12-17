@@ -233,7 +233,7 @@ export function createApp(): FastifyInstance {
         generatedAt: string;
         lookbackDays: number;
         missingDays?: Array<{ type_id?: number; typeId?: number; region_id?: number; regionId?: number; missingDay?: string }>;
-        duplicateBuckets?: Array<{ type_id?: number; region_id?: number; bucket_day?: string; bucketDay?: string }>;
+        duplicateBuckets?: Array<{ type_id?: number; region_id?: number; bucket_day?: string; bucketDay?: string; bucket_count?: number }>;
         staleLatest?: Array<{ type_id?: number; region_id?: number; updated_at?: string }>;
       };
       const missingDays = Array.isArray(report.missingDays) ? report.missingDays : [];

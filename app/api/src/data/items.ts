@@ -148,9 +148,9 @@ export async function getItemDetail(pool: Pool, typeId: number, options: ItemDet
       LIMIT 1;
     `,
     values: [typeId]
-  } as const;
+  };
 
-  const metadataResult = await pool.query(metadataQuery);
+  const metadataResult = await pool.query(metadataQuery as any);
   const row = metadataResult.rows[0];
 
   if (!row) {
@@ -183,9 +183,9 @@ export async function getItemDetail(pool: Pool, typeId: number, options: ItemDet
       ORDER BY material_name ASC;
     `,
     values: [typeId]
-  } as const;
+  };
 
-  const materialsResult = await pool.query(materialsQuery);
+  const materialsResult = await pool.query(materialsQuery as any);
 
   const marketGroupPath: ItemMarketGroupPathNode[] = (() => {
     const rawPath = Array.isArray(row.market_group_path)
