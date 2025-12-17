@@ -14,6 +14,8 @@ function sanitizeBase(input: string | undefined | null): string | null {
   return trimmed.replace(/\/+$/, '');
 }
 
+
+
 export function resolveApiBase(): string {
   const envBase = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_API_BASE_URL : undefined;
   const fromEnv = sanitizeBase(typeof envBase === 'string' ? envBase : undefined);
