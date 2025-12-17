@@ -11,7 +11,11 @@ function runScript(command: string, args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd: WORKSPACE_ROOT,
-      env: process.env,
+      env: {
+        ...process.env,
+        // Constrain heap for SDE import on small instances (Render free tier is 512Mi).
+        SDE_HEAP_MB: process.env.SDE_HEAP_MB ?? "256",
+      },
       stdio: "inherit",
     });
 
@@ -35,9 +39,13 @@ export async function runSdeBootstrapIfNeeded(): Promise<void> {
   // eslint-disable-next-line no-console
   console.log("[sde-bootstrap] flag enabled; importing SDE and refreshing eligibility views");
 
-  await runScript(process.execPath, [SDE_SCRIPT]);
-  await runScript("npm", ["run", "market:eligible:refresh"]);
-
-  // eslint-disable-next-line no-console
-  console.log("[sde-bootstrap] completed");
+  try {
+    await runScript(process.execPath, [SDE_SCRIPT]);
+    await runScript("npm", ["run", "market:eligible:refresh"]);
+    // eslint-disable-next-line no-console
+    console.log("[sde-bootstrap] completed");
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[sde-bootstrap] failed; continuing API startup", error);
+  }
 }
