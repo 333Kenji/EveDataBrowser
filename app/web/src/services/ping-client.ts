@@ -24,7 +24,7 @@ export async function getPingSnapshot(): Promise<PingSnapshot> {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), TIMEOUT_MS);
     try {
-      const res = await fetch(`${base}/ping`, { signal: controller.signal });
+      const res = await fetch(`${base}/health`, { signal: controller.signal });
       const latency = Math.round(performance.now() - start);
       clearTimeout(t);
       if (res.ok) {
