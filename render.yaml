@@ -49,6 +49,5 @@ services:
     autoDeploy: true
     envVars:
       - key: VITE_API_BASE_URL
-        # Replace after first deploy with the API's public URL, e.g., https://eve-data-browser-api.onrender.com
-        value: https://REPLACE_WITH_API_URL
+        value: https://eve-data-browser-api.onrender.com
 
