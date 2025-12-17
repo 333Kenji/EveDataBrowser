@@ -1,4 +1,5 @@
 const DEFAULT_BASE = 'http://localhost:3400';
+const RENDER_API_BASE = 'https://eve-data-browser-api.onrender.com';
 
 const FALLBACK_BASE = DEFAULT_BASE;
 
@@ -20,6 +21,19 @@ export function resolveApiBase(): string {
     typeof window !== 'undefined' && window.location?.origin
       ? sanitizeBase(window.location.origin)
       : null;
+
+  if (!fromEnv && origin && origin.includes('onrender.com')) {
+    const host = (() => {
+      try {
+        return new URL(origin).hostname;
+      } catch {
+        return null;
+      }
+    })();
+    if (host && host.includes('eve-data-browser-web')) {
+      return RENDER_API_BASE;
+    }
+  }
 
   if (fromEnv) {
     if (origin && fromEnv === DEFAULT_BASE) {
@@ -52,6 +66,10 @@ export function resolveApiBases(): string[] {
 
   if (typeof window !== 'undefined' && window.location) {
     push(sanitizeBase(window.location.origin));
+
+    if (window.location.hostname.includes('eve-data-browser-web')) {
+      push(RENDER_API_BASE);
+    }
 
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       push(sanitizeBase('http://localhost:3400'));
