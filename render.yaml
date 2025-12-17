@@ -1,13 +1,13 @@
 databases:
   - name: eve-data-browser-db
-    # Render default for new databases per blueprint spec; adjust if your workspace supports another plan.
-    plan: basic-256mb
+    # Request free tier; adjust if workspace rejects.
+    plan: free
 
 services:
   - type: web
     name: eve-data-browser-api
     env: docker
-    plan: starter
+    plan: free
     repo: https://github.com/333Kenji/EveDataBrowser
     branch: main
     rootDir: app/api
@@ -41,7 +41,7 @@ services:
   - type: web
     name: eve-data-browser-web
     env: docker
-    plan: starter
+    plan: free
     repo: https://github.com/333Kenji/EveDataBrowser
     branch: main
     rootDir: app/web
