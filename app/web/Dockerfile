@@ -7,6 +7,7 @@ RUN npm install
 
 # Copy and build shared contracts so the file dependency resolves
 COPY packages/contracts /packages/contracts
+COPY persistence /persistence
 RUN npm --prefix /packages/contracts install \
   && npm --prefix /packages/contracts run build
 
