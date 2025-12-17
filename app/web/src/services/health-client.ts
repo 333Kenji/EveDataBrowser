@@ -1,3 +1,4 @@
+import { resolveApiBase } from './api-base';
 export type HealthState = 'healthy' | 'degraded' | 'offline';
 
 export interface HealthSnapshot {
@@ -9,17 +10,25 @@ export interface HealthSnapshot {
 
 const DEFAULT_TIMEOUT_MS = 8000;
 
+function sanitize(value: string): string {
+  return value.replace(/\/$/, '');
+}
+
 function deriveHealthEndpoints(): string[] {
-  const envBase = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:3400').trim();
-  const cleanedEnv = envBase.replace(/\/$/, '');
-  let fallback: string | null = null;
+  const primary = sanitize(resolveApiBase());
+  const endpoints = [primary];
+
+  // In dev, also try the traditional localhost proxy.
   if (typeof window !== 'undefined' && window.location?.origin) {
-    fallback = `${window.location.origin.replace(/\/$/, '')}/api`;
+    const origin = sanitize(window.location.origin);
+    if ((origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      const proxied = `${origin}/api`;
+      if (!endpoints.includes(proxied)) endpoints.push(proxied);
+      const defaultLocal = sanitize('http://localhost:3400');
+      if (!endpoints.includes(defaultLocal)) endpoints.push(defaultLocal);
+    }
   }
-  const endpoints = [cleanedEnv];
-  if (fallback && !endpoints.includes(fallback)) {
-    endpoints.push(fallback);
-  }
+
   return endpoints;
 }
 
