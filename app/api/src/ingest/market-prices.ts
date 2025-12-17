@@ -49,7 +49,7 @@ async function upsertPrices(executor: { query: Pool["query"] }, rows: MarketPric
   for (let index = 0; index < rows.length; index += chunkSize) {
     const chunk = rows.slice(index, index + chunkSize);
     if (chunk.length === 0) continue;
-    const values: number[] = [];
+    const values: Array<number | null | string> = [];
     const placeholders = chunk.map((row, idx) => {
       const updatedAt = new Date().toISOString();
       values.push(row.type_id, row.average_price ?? null, row.adjusted_price ?? null, updatedAt);
