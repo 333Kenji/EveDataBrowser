@@ -6,8 +6,9 @@
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { createWriteStream } from "node:fs";
+import { createWriteStream, createReadStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
+import readline from "node:readline";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import unzipper from "unzipper";
@@ -302,38 +303,64 @@ function buildMarketGroupRows(document) {
   });
 }
 
-function buildTypeRows(document, groups) {
-  const categoryByGroupId = new Map();
-  for (const group of groups) {
-    categoryByGroupId.set(group.group_id, group.category_id);
-  }
+function buildTypeRowFromEntry(id, data, categoryByGroupId) {
+  const typeId = Number(id);
+  const groupId = toNumber(data.groupID);
+  const categoryId =
+    groupId !== null && groupId !== undefined
+      ? categoryByGroupId.get(groupId) ?? null
+      : null;
 
-  return Object.entries(document).map(([id, data]) => {
-    const typeId = Number(id);
-    const groupId = toNumber(data.groupID);
-    const categoryId =
-      groupId !== null && groupId !== undefined
-        ? categoryByGroupId.get(groupId) ?? null
-        : null;
+  return {
+    key: typeId,
+    type_id: typeId,
+    name: sanitizeName(data.name ?? data.nameID, `Type ${typeId}`),
+    description: pickLocalizedText(data.description),
+    published: Boolean(data.published),
+    group_id: groupId,
+    category_id: categoryId,
+    market_group_id: toNumber(data.marketGroupID),
+    meta_group_id: toNumber(data.metaGroupID),
+    faction_id: toNumber(data.factionID),
+    race_id: toNumber(data.raceID),
+    mass: toNumber(data.mass),
+    volume: toNumber(data.volume),
+    base_price: toNumber(data.basePrice ?? data.baseprice),
+    portion_size: toNumber(data.portionSize) ?? 1,
+  };
+}
 
-    return {
-      key: typeId,
-      type_id: typeId,
-      name: sanitizeName(data.name ?? data.nameID, `Type ${typeId}`),
-      description: pickLocalizedText(data.description),
-      published: Boolean(data.published),
-      group_id: groupId,
-      category_id: categoryId,
-      market_group_id: toNumber(data.marketGroupID),
-      meta_group_id: toNumber(data.metaGroupID),
-      faction_id: toNumber(data.factionID),
-      race_id: toNumber(data.raceID),
-      mass: toNumber(data.mass),
-      volume: toNumber(data.volume),
-      base_price: toNumber(data.basePrice ?? data.baseprice),
-      portion_size: toNumber(data.portionSize) ?? 1,
-    };
-  });
+function buildMasterProductRow(typeRow, maps) {
+  return {
+    product_type_id: typeRow.type_id,
+    product_name: extractEnglishName(typeRow.name),
+    product_group_id: typeRow.group_id,
+    product_group_name: typeRow.group_id
+      ? maps.groupNameById.get(typeRow.group_id) ?? null
+      : null,
+    product_category_id: typeRow.category_id,
+    product_category_name: typeRow.category_id
+      ? maps.categoryNameById.get(typeRow.category_id) ?? null
+      : null,
+    product_market_group_id: typeRow.market_group_id,
+    product_market_group_name: maps.marketGroupNameById.get(
+      typeRow.market_group_id,
+    ) ?? null,
+    product_meta_group_id: typeRow.meta_group_id,
+    product_meta_group_name: null,
+    product_faction_id: typeRow.faction_id,
+    product_faction_name: null,
+    blueprint_type_id: null,
+    blueprint_name: null,
+    blueprint_group_id: null,
+    blueprint_group_name: null,
+    blueprint_category_id: null,
+    blueprint_category_name: null,
+    product_quantity: typeRow.portion_size ?? 1,
+    manufacturing_time: null,
+    max_production_limit: null,
+    activity: "published",
+  };
 }
 
 function buildCategoryRows(document) {
@@ -348,99 +375,236 @@ function buildCategoryRows(document) {
   });
 }
 
-function buildMasterProductRows(
-  typeRows,
-  groupRows,
-  marketGroupRows,
-  categoryRows,
-) {
-  const groupNameById = new Map(
-    groupRows.map((group) => [group.group_id, extractEnglishName(group.name)]),
-  );
-  const categoryNameById = new Map(
-    categoryRows.map((category) => [
-      category.category_id,
-      extractEnglishName(category.name),
-    ]),
-  );
-  const marketGroupNameById = new Map(
-    marketGroupRows.map((group) => [
-      group.market_group_id,
-      extractEnglishName(group.name),
-    ]),
-  );
+function parseTypeEntry(key, yamlChunk) {
+  const tryParse = (chunk) => {
+    const parsed = YAML.parse(chunk);
+    return parsed?.[key];
+  };
 
-  return typeRows
-    .filter(
-      (row) =>
-        row.published &&
-        row.market_group_id !== null &&
-        row.market_group_id !== undefined,
-    )
-    .map((row) => ({
-      product_type_id: row.type_id,
-      product_name: extractEnglishName(row.name),
-      product_group_id: row.group_id,
-      product_group_name: row.group_id
-        ? groupNameById.get(row.group_id) ?? null
-        : null,
-      product_category_id: row.category_id,
-      product_category_name: row.category_id
-        ? categoryNameById.get(row.category_id) ?? null
-        : null,
-      product_market_group_id: row.market_group_id,
-      product_market_group_name:
-        marketGroupNameById.get(row.market_group_id) ?? null,
-      product_meta_group_id: row.meta_group_id,
-      product_meta_group_name: null,
-      product_faction_id: row.faction_id,
-      product_faction_name: null,
-      blueprint_type_id: null,
-      blueprint_name: null,
-      blueprint_group_id: null,
-      blueprint_group_name: null,
-      blueprint_category_id: null,
-      blueprint_category_name: null,
-      product_quantity: row.portion_size ?? 1,
-      manufacturing_time: null,
-      max_production_limit: null,
-      activity: "published",
-    }));
+  try {
+    return tryParse(yamlChunk);
+  } catch (error) {
+    const sanitizedChunk = yamlChunk
+      .split(/\r?\n/)
+      .filter((line) => line.trim() !== "'")
+      .join("\n");
+
+    try {
+      const parsed = tryParse(sanitizedChunk);
+      console.warn(
+        `[sde] parsed type ${key} after sanitizing stray quote-only lines`,
+      );
+      return parsed;
+    } catch (secondError) {
+      const fallback = parseTypeEntryFallback(key, sanitizedChunk);
+      if (fallback) {
+        console.warn(
+          `[sde] parsed type ${key} via fallback after YAML errors: ${error.message} / ${secondError.message}`,
+        );
+        return fallback;
+      }
+
+      console.error(
+        `[sde] failed to parse type ${key}: ${error.message}; sanitized retry: ${secondError.message}`,
+      );
+      throw secondError;
+    }
+  }
 }
 
-async function stripNonEnglishTranslations(filePath) {
-  const raw = await readFile(filePath, "utf8");
-  const lines = raw.split(/\r?\n/);
-  const filtered = [];
-  let skipIndent = null;
+function parseTypeEntryFallback(key, chunk) {
+  const stripQuotes = (value) => value.replace(/^['"]|['"]$/g, "");
+  const getNumber = (field) => {
+    const match = chunk.match(new RegExp(`\\n\\s*${field}:\\s*([-0-9.]+)`));
+    return match ? Number(match[1]) : null;
+  };
+  const getBoolean = (field) => {
+    const match = chunk.match(new RegExp(`\\n\\s*${field}:\\s*(true|false)`, "i"));
+    if (!match) return null;
+    return match[1].toLowerCase() === "true";
+  };
+  const extractSection = (label) => {
+    const regex = new RegExp(
+      `\\n\\s*${label}:\\s*\\n([\\s\\S]*?)(\\n\\s*[a-zA-Z0-9_]+:|$)`,
+      "m",
+    );
+    const match = regex.exec(chunk);
+    return match ? match[1] : null;
+  };
+  const englishFromSection = (section) => {
+    if (!section) return null;
+    const match = section.match(/\n?\s*en:\s*(.+)/);
+    return match ? stripQuotes(match[1].trim()) : null;
+  };
 
-  for (const line of lines) {
-    const indentLength = line.match(/^\s*/)[0].length;
-    if (skipIndent !== null) {
-      const trimmed = line.trim();
-      if (
-        trimmed.length === 0 ||
-        trimmed === "'" ||
-        indentLength > skipIndent
-      ) {
-        continue;
+  const nameEn = englishFromSection(extractSection("name"));
+  const descriptionEn = englishFromSection(extractSection("description"));
+
+  const entry = {
+    name: nameEn ? { en: nameEn } : undefined,
+    description: descriptionEn ? { en: descriptionEn } : undefined,
+    published: getBoolean("published") ?? false,
+    groupID: getNumber("groupID"),
+    marketGroupID: getNumber("marketGroupID"),
+    metaGroupID: getNumber("metaGroupID"),
+    factionID: getNumber("factionID"),
+    raceID: getNumber("raceID"),
+    mass: getNumber("mass"),
+    volume: getNumber("volume"),
+    basePrice: getNumber("basePrice") ?? getNumber("baseprice"),
+    portionSize: getNumber("portionSize"),
+  };
+
+  const hasAnyField =
+    Object.values(entry).some((value) => value !== null && value !== undefined) ||
+    Object.values(entry.name ?? {}).length > 0 ||
+    Object.values(entry.description ?? {}).length > 0;
+
+  return hasAnyField ? entry : null;
+}
+
+async function streamYamlMapEntries(filePath, onEntry) {
+  const rl = readline.createInterface({
+    input: createReadStream(filePath),
+    crlfDelay: Infinity,
+  });
+
+  let currentKey = null;
+  let buffer = [];
+
+  const flush = async () => {
+    if (currentKey === null || buffer.length === 0) return;
+    const chunk = buffer.join("\n");
+    const key = currentKey;
+    currentKey = null;
+    buffer = [];
+    await onEntry(key, chunk);
+  };
+
+  for await (const line of rl) {
+    const keyMatch = line.match(/^([0-9]+):\s*$/);
+    if (keyMatch) {
+      if (currentKey !== null) {
+        await flush();
       }
-      skipIndent = null;
+      currentKey = keyMatch[1];
+      buffer = [line];
+      continue;
     }
 
-    const translationMatch = line.match(/^(\s+)([A-Za-z][A-Za-z0-9_-]*):/);
-    if (translationMatch) {
-      const key = translationMatch[2].toLowerCase();
-      if (LANGUAGE_KEYS.has(key) && !ENGLISH_KEYS.has(key)) {
-        skipIndent = indentLength;
-        continue;
-      }
+    if (currentKey === null) {
+      continue;
     }
 
-    filtered.push(line);
+    buffer.push(line);
   }
 
-  await writeFile(filePath, filtered.join("\n"));
+  if (currentKey !== null && buffer.length > 0) {
+    await flush();
+  }
+}
+
+async function streamTypesAndInsert({
+  typesPath,
+  client,
+  categoryByGroupId,
+  groupNameById,
+  categoryNameById,
+  marketGroupNameById,
+}) {
+  const typeColumns = [
+    "key",
+    "type_id",
+    "name",
+    "description",
+    "published",
+    "group_id",
+    "category_id",
+    "market_group_id",
+    "meta_group_id",
+    "faction_id",
+    "race_id",
+    "mass",
+    "volume",
+    "base_price",
+  ];
+  const productColumns = [
+    "product_type_id",
+    "product_name",
+    "product_group_id",
+    "product_group_name",
+    "product_category_id",
+    "product_category_name",
+    "product_market_group_id",
+    "product_market_group_name",
+    "product_meta_group_id",
+    "product_meta_group_name",
+    "product_faction_id",
+    "product_faction_name",
+    "blueprint_type_id",
+    "blueprint_name",
+    "blueprint_group_id",
+    "blueprint_group_name",
+    "blueprint_category_id",
+    "blueprint_category_name",
+    "product_quantity",
+    "manufacturing_time",
+    "max_production_limit",
+    "activity",
+  ];
+
+  const typeBatch = [];
+  const productBatch = [];
+
+  const flushTypes = async () => {
+    if (typeBatch.length === 0) return;
+    await insertRows(client, "sde_master.sde_types", typeColumns, typeBatch, {
+      batchSize: 250,
+    });
+    typeBatch.length = 0;
+  };
+
+  const flushProducts = async () => {
+    if (productBatch.length === 0) return;
+    await insertRows(
+      client,
+      "sde_master.master_products",
+      productColumns,
+      productBatch,
+      { batchSize: 250, conflictColumn: "product_type_id" },
+    );
+    productBatch.length = 0;
+  };
+
+  const maps = { groupNameById, categoryNameById, marketGroupNameById };
+
+  let typeCount = 0;
+  let productCount = 0;
+
+  await streamYamlMapEntries(typesPath, async (key, yamlChunk) => {
+    const entry = parseTypeEntry(key, yamlChunk);
+    if (!entry) return;
+    const typeRow = buildTypeRowFromEntry(key, entry, categoryByGroupId);
+    typeBatch.push(typeRow);
+    typeCount += 1;
+
+    if (typeRow.published && typeRow.market_group_id !== null && typeRow.market_group_id !== undefined) {
+      productBatch.push(buildMasterProductRow(typeRow, maps));
+      productCount += 1;
+    }
+
+    if (typeBatch.length >= 250) {
+      await flushTypes();
+    }
+    if (productBatch.length >= 250) {
+      await flushProducts();
+    }
+  });
+
+  await flushTypes();
+  await flushProducts();
+
+  console.log(`[sde] inserted types=${typeCount} products=${productCount}`);
 }
 
 async function insertRows(
@@ -484,14 +648,39 @@ async function insertRows(
 
 async function loadIntoDatabase({
   databaseUrl,
-  categoryRows,
-  groupRows,
-  marketGroupRows,
-  typeRows,
-  masterProductRows,
+  categoryDoc,
+  groupDoc,
+  marketGroupDoc,
+  typesPath,
   skipRefresh,
 }) {
   console.log("[sde] loading data into Postgres...");
+
+  const categoryRows = buildCategoryRows(categoryDoc);
+  const groupRows = buildGroupRows(groupDoc);
+  const marketGroupRows = buildMarketGroupRows(marketGroupDoc);
+
+  const categoryNameById = new Map(
+    categoryRows.map((category) => [
+      category.category_id,
+      extractEnglishName(category.name),
+    ]),
+  );
+  const groupNameById = new Map(
+    groupRows.map((group) => [group.group_id, extractEnglishName(group.name)]),
+  );
+  const marketGroupNameById = new Map(
+    marketGroupRows.map((group) => [
+      group.market_group_id,
+      extractEnglishName(group.name),
+    ]),
+  );
+
+  const categoryByGroupId = new Map();
+  for (const group of groupRows) {
+    categoryByGroupId.set(group.group_id, group.category_id);
+  }
+
   const pool = new Pool({ connectionString: databaseUrl });
   const client = await pool.connect();
   try {
@@ -523,62 +712,19 @@ async function loadIntoDatabase({
       marketGroupRows,
       { batchSize: 1000 },
     );
-    await insertRows(
+
+    await streamTypesAndInsert({
+      typesPath,
       client,
-      "sde_master.sde_types",
-      [
-        "key",
-        "type_id",
-        "name",
-        "description",
-        "published",
-        "group_id",
-        "category_id",
-        "market_group_id",
-        "meta_group_id",
-        "faction_id",
-        "race_id",
-        "mass",
-        "volume",
-        "base_price",
-      ],
-      typeRows,
-      { batchSize: 250 },
-    );
-    await insertRows(
-      client,
-      "sde_master.master_products",
-      [
-        "product_type_id",
-        "product_name",
-        "product_group_id",
-        "product_group_name",
-        "product_category_id",
-        "product_category_name",
-        "product_market_group_id",
-        "product_market_group_name",
-        "product_meta_group_id",
-        "product_meta_group_name",
-        "product_faction_id",
-        "product_faction_name",
-        "blueprint_type_id",
-        "blueprint_name",
-        "blueprint_group_id",
-        "blueprint_group_name",
-        "blueprint_category_id",
-        "blueprint_category_name",
-        "product_quantity",
-        "manufacturing_time",
-        "max_production_limit",
-        "activity",
-      ],
-      masterProductRows,
-      { batchSize: 250, conflictColumn: "product_type_id" },
-    );
+      categoryByGroupId,
+      groupNameById,
+      categoryNameById,
+      marketGroupNameById,
+    });
 
     await client.query("COMMIT");
     console.log(
-      `[sde] inserted ${typeRows.length} types, ${groupRows.length} groups, ${marketGroupRows.length} market groups, ${categoryRows.length} categories, ${masterProductRows.length} products`,
+      `[sde] inserted categories=${categoryRows.length} groups=${groupRows.length} marketGroups=${marketGroupRows.length}`,
     );
   } catch (error) {
     await client.query("ROLLBACK");
@@ -641,17 +787,11 @@ async function run() {
       forceDownload: options.forceDownload,
     });
     const extractedPaths = await extractYamlFiles(zipPath, fsdDir);
-    await Promise.all(
-      Object.values(extractedPaths).map((destination) =>
-        stripNonEnglishTranslations(destination),
-      ),
-    );
-
     console.log(
       `[sde] using archive etag=${metadata?.etag ?? "unknown"} lastModified=${metadata?.lastModified ?? "unknown"}`,
     );
 
-    const [categoryDoc, groupDoc, marketGroupDoc, typeDoc] = await Promise.all([
+    const [categoryDoc, groupDoc, marketGroupDoc] = await Promise.all([
       readFile(extractedPaths["fsd/categories.yaml"], "utf8").then((content) =>
         YAML.parse(content),
       ),
@@ -661,29 +801,14 @@ async function run() {
       readFile(extractedPaths["fsd/marketGroups.yaml"], "utf8").then((content) =>
         YAML.parse(content),
       ),
-      readFile(extractedPaths["fsd/types.yaml"], "utf8").then((content) =>
-        YAML.parse(content),
-      ),
     ]);
-
-    const categoryRows = buildCategoryRows(categoryDoc);
-    const groupRows = buildGroupRows(groupDoc);
-    const marketGroupRows = buildMarketGroupRows(marketGroupDoc);
-    const typeRows = buildTypeRows(typeDoc, groupRows);
-    const masterProductRows = buildMasterProductRows(
-      typeRows,
-      groupRows,
-      marketGroupRows,
-      categoryRows,
-    );
 
     await loadIntoDatabase({
       databaseUrl: options.databaseUrl,
-      categoryRows,
-      groupRows,
-      marketGroupRows,
-      typeRows,
-      masterProductRows,
+      categoryDoc,
+      groupDoc,
+      marketGroupDoc,
+      typesPath: extractedPaths["fsd/types.yaml"],
       skipRefresh: options.skipRefresh,
     });
 
