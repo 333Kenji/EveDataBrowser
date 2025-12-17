@@ -1,9 +1,11 @@
 import { createApp } from "./app.js";
+import { runSdeBootstrapIfNeeded } from "./ops/sde-bootstrap.js";
 
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 
 async function main(): Promise<void> {
+  await runSdeBootstrapIfNeeded();
   const app = createApp();
 
   try {

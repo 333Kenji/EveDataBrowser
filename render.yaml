@@ -37,6 +37,8 @@ services:
         value: "false"
       - key: STRUCTURE_ORDER_STRUCTURE_IDS
         value: ""
+      - key: SDE_BOOTSTRAP_ON_START
+        value: "true"
 
   - type: web
     name: eve-data-browser-web
