@@ -12,6 +12,7 @@ services:
     branch: main
     rootDir: app/api
     dockerfilePath: app/api/Dockerfile
+    dockerContext: app/api
     healthCheckPath: /health
     autoDeploy: true
     envVars:
@@ -46,6 +47,7 @@ services:
     branch: main
     rootDir: app/web
     dockerfilePath: app/web/Dockerfile
+    dockerContext: app/web
     autoDeploy: true
     envVars:
       - key: VITE_API_BASE_URL
