@@ -118,46 +118,46 @@ export async function searchTaxonomy(pool: Pool, options: TaxonomySearchOptions 
   const metaGroupName = buildNameExpression("smmg");
 
   const itemsQuery = {
-    name: "taxonomy:search-master:v1",
+    name: "taxonomy:search-types:v1",
     text: `
       SELECT
-        mp.product_type_id AS type_id,
-        mp.product_name AS product_name,
-        mp.product_group_id,
-        COALESCE(mp.product_group_name, ${groupName}) AS group_name,
-        mp.product_category_id,
-        COALESCE(mp.product_category_name, ${categoryName}) AS category_name,
-        mp.product_meta_group_id,
-        COALESCE(mp.product_meta_group_name, ${metaGroupName}) AS meta_group_name,
-        mp.product_market_group_id,
-        mp.product_market_group_name,
+        st.key AS type_id,
+        ${buildNameExpression("st")} AS product_name,
+        st.group_id AS product_group_id,
+        ${groupName} AS group_name,
+        COALESCE(st.category_id, sg.category_id) AS product_category_id,
+        ${categoryName} AS category_name,
+        st.meta_group_id AS product_meta_group_id,
+        ${metaGroupName} AS meta_group_name,
+        st.market_group_id AS product_market_group_id,
+        COALESCE(${buildNameExpression("smg")}, st.market_group_id::text) AS product_market_group_name,
         market_path.market_group_path,
         st.published,
-        (mp.activity = 'manufacturing') AS is_blueprint_manufactured
-      FROM sde_master.master_products mp
-      JOIN sde_master.sde_types st
-        ON st.key = mp.product_type_id
+        FALSE AS is_blueprint_manufactured
+      FROM sde_master.sde_types st
       LEFT JOIN sde_master.sde_groups sg
-        ON sg.key = mp.product_group_id
+        ON sg.key = st.group_id
       LEFT JOIN sde_master.sde_categories sc
-        ON sc.key = COALESCE(mp.product_category_id, sg.category_id)
+        ON sc.key = COALESCE(st.category_id, sg.category_id)
+      LEFT JOIN sde_master.sde_market_groups smg
+        ON smg.key = st.market_group_id
       LEFT JOIN sde_master.sde_meta_groups smmg
-        ON smmg.key = COALESCE(mp.product_meta_group_id, st.meta_group_id)
+        ON smmg.key = st.meta_group_id
       LEFT JOIN LATERAL (
         WITH RECURSIVE mg AS (
           SELECT
             node.key,
             node.market_group_id,
-            COALESCE(${buildNameExpression("node")}, mp.product_market_group_name) AS name,
+            ${buildNameExpression("node")} AS name,
             node.parent_group_id,
             0 AS depth
           FROM sde_master.sde_market_groups node
-          WHERE node.key = mp.product_market_group_id
+          WHERE node.key = st.market_group_id
           UNION ALL
           SELECT
             parent.key,
             parent.market_group_id,
-            COALESCE(${buildNameExpression("parent")}, mp.product_market_group_name) AS name,
+            ${buildNameExpression("parent")} AS name,
             parent.parent_group_id,
             mg.depth + 1 AS depth
           FROM sde_master.sde_market_groups parent
@@ -175,7 +175,7 @@ export async function searchTaxonomy(pool: Pool, options: TaxonomySearchOptions 
         FROM mg
       ) AS market_path ON TRUE
       ${whereClause}
-      ORDER BY mp.product_name ASC, mp.product_type_id ASC
+      ORDER BY product_name ASC, type_id ASC
       LIMIT $${limitIndex}
       OFFSET $${offsetIndex};
     `,
@@ -183,18 +183,16 @@ export async function searchTaxonomy(pool: Pool, options: TaxonomySearchOptions 
   };
 
   const countQuery = {
-    name: "taxonomy:search-master-count:v1",
+    name: "taxonomy:search-types-count:v1",
     text: `
       SELECT COUNT(*)::bigint AS total
-      FROM sde_master.master_products mp
-      JOIN sde_master.sde_types st
-        ON st.key = mp.product_type_id
+      FROM sde_master.sde_types st
       LEFT JOIN sde_master.sde_groups sg
-        ON sg.key = mp.product_group_id
+        ON sg.key = st.group_id
       LEFT JOIN sde_master.sde_categories sc
-        ON sc.key = COALESCE(mp.product_category_id, sg.category_id)
+        ON sc.key = COALESCE(st.category_id, sg.category_id)
       LEFT JOIN sde_master.sde_meta_groups smmg
-        ON smmg.key = COALESCE(mp.product_meta_group_id, st.meta_group_id)
+        ON smmg.key = st.meta_group_id
       ${whereClause};
     `,
     values
