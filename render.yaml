@@ -41,5 +41,13 @@ services:
         value: "true"
       - key: SDE_BOOTSTRAP_MIN_INTERVAL_HOURS
         value: "24"
+      - key: MARKET_BOOTSTRAP_ON_START
+        value: "true"
+      - key: MARKET_BOOTSTRAP_MIN_INTERVAL_HOURS
+        value: "24"
+      - key: MARKET_BOOTSTRAP_REGION_ID
+        value: "10000002"
+      - key: MARKET_BOOTSTRAP_DAYS
+        value: "7"
       - key: SDE_HEAP_MB
         value: "256"
