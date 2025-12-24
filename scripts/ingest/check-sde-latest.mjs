@@ -378,6 +378,77 @@ function buildCategoryRows(document) {
 async function ensureMasterTables(client) {
   await client.query("CREATE SCHEMA IF NOT EXISTS sde_master");
   await client.query(`
+    CREATE TABLE IF NOT EXISTS sde_master.sde_categories (
+      key bigint PRIMARY KEY,
+      category_id bigint,
+      name jsonb NOT NULL,
+      published boolean NOT NULL,
+      icon_id bigint
+    );
+  `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS sde_master.sde_groups (
+      key bigint PRIMARY KEY,
+      group_id bigint,
+      category_id bigint,
+      name jsonb NOT NULL,
+      published boolean NOT NULL,
+      anchorable boolean NOT NULL DEFAULT false,
+      anchored boolean NOT NULL DEFAULT false,
+      fittable_non_singleton boolean NOT NULL DEFAULT false,
+      use_base_price boolean NOT NULL DEFAULT false,
+      icon_id bigint
+    );
+  `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS sde_master.sde_market_groups (
+      key bigint PRIMARY KEY,
+      market_group_id bigint,
+      name jsonb NOT NULL,
+      description text,
+      parent_group_id bigint,
+      has_types boolean NOT NULL DEFAULT false,
+      icon_id bigint
+    );
+  `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS sde_master.sde_meta_groups (
+      key bigint PRIMARY KEY,
+      name jsonb NOT NULL,
+      description jsonb,
+      color jsonb,
+      icon_suffix text,
+      icon_id bigint
+    );
+  `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS sde_master.sde_types (
+      key bigint PRIMARY KEY,
+      type_id bigint,
+      group_id bigint NOT NULL,
+      name jsonb NOT NULL,
+      description text,
+      published boolean NOT NULL,
+      portion_size integer NOT NULL DEFAULT 1,
+      base_price double precision,
+      volume double precision,
+      mass double precision,
+      race_id integer,
+      faction_id integer,
+      market_group_id bigint,
+      meta_group_id bigint,
+      category_id bigint
+    );
+  `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS sde_master.sde_dogma_type_attributes (
+      type_id bigint NOT NULL,
+      attribute_id bigint NOT NULL,
+      value double precision,
+      PRIMARY KEY (type_id, attribute_id)
+    );
+  `);
+  await client.query(`
     CREATE TABLE IF NOT EXISTS sde_master.master_products (
       product_type_id bigint PRIMARY KEY,
       product_name text NOT NULL,

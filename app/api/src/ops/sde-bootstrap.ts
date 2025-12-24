@@ -31,18 +31,18 @@ async function shouldRunBootstrap(pool: Pool): Promise<boolean> {
   `);
   await pool.query("INSERT INTO sde_master.sde_bootstrap_state (id) VALUES (1) ON CONFLICT DO NOTHING");
 
-  const result = await pool.query("SELECT last_attempt_at FROM sde_master.sde_bootstrap_state WHERE id = 1");
-  const lastAttempt = result.rows[0]?.last_attempt_at instanceof Date
-    ? (result.rows[0].last_attempt_at as Date)
-    : result.rows[0]?.last_attempt_at
-      ? new Date(result.rows[0].last_attempt_at)
+  const result = await pool.query("SELECT last_attempt_at, last_success_at FROM sde_master.sde_bootstrap_state WHERE id = 1");
+  const lastSuccess = result.rows[0]?.last_success_at instanceof Date
+    ? (result.rows[0].last_success_at as Date)
+    : result.rows[0]?.last_success_at
+      ? new Date(result.rows[0].last_success_at)
       : null;
 
-  if (!lastAttempt || !Number.isFinite(lastAttempt.getTime())) {
+  if (!lastSuccess || !Number.isFinite(lastSuccess.getTime())) {
     return true;
   }
 
-  return Date.now() - lastAttempt.getTime() >= intervalMs;
+  return Date.now() - lastSuccess.getTime() >= intervalMs;
 }
 
 async function markBootstrapAttempt(pool: Pool): Promise<void> {
