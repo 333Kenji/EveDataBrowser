@@ -5,12 +5,12 @@ databases:
 
 services:
   - type: web
-    name: eve-data-browser-api
+    name: eve-data-browser
     env: docker
     plan: free
     repo: https://github.com/333Kenji/EveDataBrowser
     branch: main
-    dockerfilePath: app/api/Dockerfile
+    dockerfilePath: Dockerfile
     dockerContext: .
     healthCheckPath: /health
     autoDeploy: true
@@ -20,7 +20,7 @@ services:
           name: eve-data-browser-db
           property: connectionString
       - key: API_CORS_ALLOW_ORIGINS
-        value: "https://eve-data-browser-web.onrender.com"
+        value: "https://eve-data-browser.onrender.com"
       - key: API_CACHE_TAXONOMY_MAX_AGE
         value: "3600"
       - key: API_CACHE_TAXONOMY_STALE
@@ -41,17 +41,3 @@ services:
         value: "false"
       - key: SDE_HEAP_MB
         value: "256"
-
-  - type: web
-    name: eve-data-browser-web
-    env: docker
-    plan: free
-    repo: https://github.com/333Kenji/EveDataBrowser
-    branch: main
-    dockerfilePath: app/web/Dockerfile
-    dockerContext: .
-    autoDeploy: true
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: https://eve-data-browser-api.onrender.com
-

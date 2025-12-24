@@ -1,7 +1,5 @@
 const DEFAULT_BASE = 'http://localhost:3400';
-const RENDER_API_BASE = 'https://eve-data-browser-api.onrender.com';
-
-const FALLBACK_BASE = RENDER_API_BASE;
+const FALLBACK_BASE = DEFAULT_BASE;
 
 function sanitizeBase(input: string | undefined | null): string | null {
   if (!input) {
@@ -23,19 +21,6 @@ export function resolveApiBase(): string {
     typeof window !== 'undefined' && window.location?.origin
       ? sanitizeBase(window.location.origin)
       : null;
-
-  const host = (() => {
-    try {
-      return origin ? new URL(origin).hostname : null;
-    } catch {
-      return null;
-    }
-  })();
-
-  // Prefer the deployed API when running on Render, regardless of baked envs.
-  if (host && host.includes('eve-data-browser-web')) {
-    return fromEnv || RENDER_API_BASE;
-  }
 
   if (fromEnv) {
     return fromEnv;
@@ -65,10 +50,6 @@ export function resolveApiBases(): string[] {
 
   if (typeof window !== 'undefined' && window.location) {
     push(sanitizeBase(window.location.origin));
-
-    if (window.location.hostname.includes('eve-data-browser-web')) {
-      push(RENDER_API_BASE);
-    }
 
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       push(sanitizeBase('http://localhost:3400'));

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
+import fastifyStatic from "@fastify/static";
 import { MARKET_HISTORY_DEFAULT_LIMIT } from "@evedatabrowser/contracts";
 import schemaManifest from "../../../persistence/manifests/schema-manifest.json" with { type: "json" };
 import { config } from "./config.js";
@@ -61,6 +62,8 @@ const MANIFEST_SCHEMA_GENERATED_AT = typeof schemaManifest?.generatedAt === "str
 const APP_DIR = fileURLToPath(new URL(".", import.meta.url));
 const HISTORY_METRICS_PATH = resolve(APP_DIR, "../../../logs/ingestion/history-metrics.json");
 const QA_REPORT_PATH = resolve(APP_DIR, "../../../logs/ingestion/qa/latest.json");
+const WEB_DIST_PATH = resolve(APP_DIR, "../../web/dist");
+const STATIC_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 365;
 
 function parseCsvNumbers(value?: string): number[] {
   if (!value) {
@@ -128,6 +131,32 @@ function serializeCacheEnvelope(cache: CacheEnvelope) {
   };
 }
 
+function isSpaFallbackRequest(request: FastifyRequest): boolean {
+  if (!["GET", "HEAD"].includes(request.method)) {
+    return false;
+  }
+
+  const path = request.url.split("?")[0] ?? "/";
+
+  if (path === "/health" || path.startsWith("/health/")) {
+    return false;
+  }
+
+  if (path === "/api" || path.startsWith("/api/")) {
+    return false;
+  }
+
+  if (path === "/v1" || path.startsWith("/v1/")) {
+    return false;
+  }
+
+  if (path.startsWith("/assets/")) {
+    return false;
+  }
+
+  return !path.includes(".");
+}
+
 async function readHistoryMetricsSummary(): Promise<Record<string, unknown> | null> {
   try {
     const raw = await readFile(HISTORY_METRICS_PATH, { encoding: "utf8" });
@@ -149,6 +178,15 @@ export function createApp(): FastifyInstance {
   });
 
   void app.register(postgresPlugin);
+
+  void app.register(fastifyStatic, {
+    root: WEB_DIST_PATH,
+    prefix: "/",
+    index: false,
+    cacheControl: true,
+    immutable: true,
+    maxAge: STATIC_MAX_AGE_MS
+  });
 
   app.get("/health", async () => ({
     status: "ok",
@@ -277,6 +315,11 @@ export function createApp(): FastifyInstance {
       }
     }
   }));
+
+  app.get("/", async (_request, reply) => {
+    reply.header("Cache-Control", "no-store");
+    return reply.sendFile("index.html");
+  });
 
   app.get("/v1/taxonomy/search", async (request: FastifyRequest<{ Querystring: TaxonomySearchQuery }>, reply) => {
     const query = request.query ?? {};
@@ -642,6 +685,20 @@ export function createApp(): FastifyInstance {
       cache: serializeCacheEnvelope(cache),
       schemaHash: MANIFEST_SCHEMA_HASH
     };
+  });
+
+  app.setNotFoundHandler((request, reply) => {
+    if (isSpaFallbackRequest(request)) {
+      reply.header("Cache-Control", "no-store");
+      return reply.type("text/html").sendFile("index.html");
+    }
+
+    reply.code(404);
+    return reply.send({
+      statusCode: 404,
+      error: "Not Found",
+      message: "Route not found"
+    });
   });
 
   return app;
