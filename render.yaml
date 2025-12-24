@@ -38,6 +38,8 @@ services:
       - key: STRUCTURE_ORDER_STRUCTURE_IDS
         value: ""
       - key: SDE_BOOTSTRAP_ON_START
-        value: "false"
+        value: "true"
+      - key: SDE_BOOTSTRAP_MIN_INTERVAL_HOURS
+        value: "24"
       - key: SDE_HEAP_MB
         value: "256"

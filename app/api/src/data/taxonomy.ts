@@ -90,22 +90,22 @@ export async function searchTaxonomy(pool: Pool, options: TaxonomySearchOptions 
 
   if (params.query && params.query.trim()) {
     values.push(`%${params.query.trim().toLowerCase()}%`);
-    conditions.push(`LOWER(mp.product_name) LIKE $${values.length}`);
+    conditions.push(`LOWER(${buildNameExpression("st")}) LIKE $${values.length}`);
   }
 
   if (params.groupIds && params.groupIds.length > 0) {
     values.push(params.groupIds);
-    conditions.push(`mp.product_group_id = ANY($${values.length}::bigint[])`);
+    conditions.push(`st.group_id = ANY($${values.length}::bigint[])`);
   }
 
   if (params.categoryIds && params.categoryIds.length > 0) {
     values.push(params.categoryIds);
-    conditions.push(`mp.product_category_id = ANY($${values.length}::bigint[])`);
+    conditions.push(`COALESCE(st.category_id, sg.category_id) = ANY($${values.length}::bigint[])`);
   }
 
   if (params.metaGroupIds && params.metaGroupIds.length > 0) {
     values.push(params.metaGroupIds);
-    conditions.push(`mp.product_meta_group_id = ANY($${values.length}::bigint[])`);
+    conditions.push(`st.meta_group_id = ANY($${values.length}::bigint[])`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

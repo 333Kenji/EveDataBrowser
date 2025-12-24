@@ -375,6 +375,93 @@ function buildCategoryRows(document) {
   });
 }
 
+async function ensureMasterTables(client) {
+  await client.query("CREATE SCHEMA IF NOT EXISTS sde_master");
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS sde_master.master_products (
+      product_type_id bigint PRIMARY KEY,
+      product_name text NOT NULL,
+      product_group_id bigint,
+      product_group_name text,
+      product_category_id bigint,
+      product_category_name text,
+      product_market_group_id bigint,
+      product_market_group_name text,
+      product_meta_group_id bigint,
+      product_meta_group_name text,
+      product_faction_id bigint,
+      product_faction_name text,
+      blueprint_type_id bigint,
+      blueprint_name text,
+      blueprint_group_id bigint,
+      blueprint_group_name text,
+      blueprint_category_id bigint,
+      blueprint_category_name text,
+      product_quantity bigint,
+      manufacturing_time bigint,
+      max_production_limit bigint,
+      activity text NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS sde_master.master_materials (
+      product_type_id bigint NOT NULL,
+      material_type_id bigint NOT NULL,
+      material_name text,
+      material_group_id bigint,
+      material_group_name text,
+      material_category_id bigint,
+      material_category_name text,
+      material_market_group_id bigint,
+      material_market_group_name text,
+      material_meta_group_id bigint,
+      material_meta_group_name text,
+      material_faction_id bigint,
+      material_faction_name text,
+      quantity bigint NOT NULL,
+      activity text NOT NULL,
+      product_name text,
+      product_group_name text,
+      product_category_name text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      PRIMARY KEY (product_type_id, material_type_id, activity)
+    );
+  `);
+  await client.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS master_products_blueprint_type_idx
+      ON sde_master.master_products (blueprint_type_id)
+      WHERE blueprint_type_id IS NOT NULL;
+  `);
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS master_products_category_idx
+      ON sde_master.master_products (product_category_id);
+  `);
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS master_products_meta_group_idx
+      ON sde_master.master_products (product_meta_group_id)
+      WHERE product_meta_group_id IS NOT NULL;
+  `);
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS master_products_product_name_lower_idx
+      ON sde_master.master_products (LOWER(product_name));
+  `);
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS master_materials_material_idx
+      ON sde_master.master_materials (material_type_id);
+  `);
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS master_materials_product_idx
+      ON sde_master.master_materials (product_type_id);
+  `);
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS master_materials_material_name_idx
+      ON sde_master.master_materials (material_name);
+  `);
+}
+
 function parseTypeEntry(key, yamlChunk) {
   const tryParse = (chunk) => {
     const parsed = YAML.parse(chunk);
@@ -685,6 +772,7 @@ async function loadIntoDatabase({
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await ensureMasterTables(client);
     await client.query("TRUNCATE sde_master.master_products");
     await client.query("TRUNCATE sde_master.sde_types");
     await client.query("TRUNCATE sde_master.sde_groups");
