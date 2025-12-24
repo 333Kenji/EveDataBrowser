@@ -47,6 +47,8 @@ COPY --from=base /workspace/packages/contracts ./packages/contracts
 COPY --from=base /workspace/persistence ./persistence
 COPY --from=base /workspace/scripts ./scripts
 COPY --from=base /workspace/node_modules ./node_modules
+COPY --from=base /workspace/package.json ./package.json
+COPY --from=base /workspace/package-lock.json ./package-lock.json
 
 EXPOSE 3000
 
