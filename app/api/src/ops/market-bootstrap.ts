@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { Pool } from "pg";
 import { config } from "../config.js";
+import { ensureMarketEligibilityViews, ensureMarketTables } from "./market-tables.js";
 
 const MARKET_BOOTSTRAP_FLAG = process.env.MARKET_BOOTSTRAP_ON_START?.toLowerCase() === "true";
 const MARKET_BOOTSTRAP_MIN_INTERVAL_HOURS = Number.parseFloat(
@@ -106,6 +107,8 @@ export async function runMarketBootstrapIfNeeded(): Promise<void> {
       return;
     }
 
+    await ensureMarketTables(pool);
+    await ensureMarketEligibilityViews(pool);
     await markBootstrapAttempt(pool);
     // eslint-disable-next-line no-console
     console.log("[market-bootstrap] importing market history");
